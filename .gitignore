@@ -2,6 +2,7 @@
 /local.properties
 /.idea/
 /.kotlin/
+/.android-sdk/
 /build/
 /captures/
 /*.iml
