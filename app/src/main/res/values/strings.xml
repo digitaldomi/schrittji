@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Schrittji</string>
+    <string name="app_subtitle">Generate a single realistic office-life walking pattern, write it to Health Connect, and preview both historical totals and the next 7 projected days.</string>
+    <string name="grant_health_permission">Grant Health Connect step read/write permission</string>
+    <string name="open_health_connect">Open Health Connect</string>
+    <string name="view_health_connect_steps">View all Health Connect steps</string>
+    <string name="pattern_settings">Real-life pattern</string>
+    <string name="pattern_description">Weekdays follow an office routine almost all the time: early wake-up, commute walking, very little movement during work hours, lunch out only on some days, the walk home, and occasional evening runs. Weekends usually start later, but some weekends still begin early, with longer outings and lighter social walking mixed in.</string>
+    <string name="minimum_daily_steps">Minimum daily steps from Schrittji only</string>
+    <string name="maximum_daily_steps">Maximum daily steps from Schrittji only</string>
+    <string name="backfill_days">Backfill days</string>
+    <string name="continuous_publishing">Enable battery-aware background top-ups (WorkManager, about every 15 minutes)</string>
+    <string name="save_settings">Save schedule settings</string>
+    <string name="backfill_history">Backfill selected history window</string>
+    <string name="publish_missing_recent_data">Publish missing recent data</string>
+    <string name="stop_automation">Stop automation</string>
+    <string name="background_top_up_header">Background top-ups</string>
+    <string name="latest_publish_header">Latest publish result</string>
+    <string name="generated_data_header">Generated step data written to Health Connect</string>
+    <string name="projection_header">Next 7-day projection</string>
+    <string name="projection_description">Projected full-day totals for the next 7 calendar days using Schrittji\'s fixed real-life schedule generator.</string>
+    <string name="view_projection_day_detail">Open projection day detail</string>
+    <string name="health_connect_steps_title">Health Connect steps</string>
+    <string name="refresh_health_connect_steps">Refresh from Health Connect</string>
+    <string name="view_health_connect_day_detail">Open Health Connect day detail</string>
+    <string name="health_connect_steps_summary_header">All visible step records</string>
+    <string name="health_connect_steps_days_header">Daily totals</string>
+    <string name="health_connect_steps_daily_chart_header">Daily pattern (last 7 days)</string>
+    <string name="health_connect_steps_weekly_chart_header">Weekly pattern (last 8 weeks)</string>
+    <string name="health_connect_steps_records_header">Raw step records</string>
+    <string name="health_connect_steps_loading">Loading step data from Health Connect…</string>
+    <string name="health_connect_steps_empty">No step records were returned by Health Connect.</string>
+    <string name="day_detail_title_projection">Projection day detail</string>
+    <string name="day_detail_title_health_connect">Health Connect day detail</string>
+    <string name="previous_day">Previous day</string>
+    <string name="next_day">Next day</string>
+    <string name="day_detail_summary_header">Selected day summary</string>
+    <string name="day_detail_entries_header">Selected day entries</string>
+    <string name="day_detail_empty">No step entries exist for this day.</string>
+    <string name="app_note">Notes: the generator uses one repeatable office-life pattern with layered random variation, writes minute-sized step records into Health Connect, and uses WorkManager instead of an always-on service so background top-ups stay system-managed and energy efficient.</string>
+</resources>

@@ -1,0 +1,12 @@
+.gradle/
+/local.properties
+/.idea/
+/.kotlin/
+/.android-sdk/
+/build/
+/captures/
+/*.iml
+/app/build/
+/app/release/
+/app/debug/
+/artifacts/
