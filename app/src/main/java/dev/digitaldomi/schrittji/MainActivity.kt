@@ -78,6 +78,15 @@ class MainActivity : AppCompatActivity() {
             openHealthConnect()
         }
 
+        binding.buttonViewHealthConnectSteps.setOnClickListener {
+            launchAction {
+                if (!ensureReadyForHealthConnectData()) {
+                    return@launchAction
+                }
+                startActivity(Intent(this@MainActivity, HealthConnectStepsActivity::class.java))
+            }
+        }
+
         binding.buttonSaveSettings.setOnClickListener {
             launchAction {
                 val config = buildConfigFromInputs() ?: return@launchAction
@@ -96,7 +105,7 @@ class MainActivity : AppCompatActivity() {
         binding.buttonBackfill.setOnClickListener {
             launchAction {
                 val config = buildConfigFromInputs() ?: return@launchAction
-                if (!ensureReadyForWrite()) {
+                if (!ensureReadyForHealthConnectData()) {
                     return@launchAction
                 }
                 val saved = simulationCoordinator.saveConfig(config)
@@ -109,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         binding.buttonPublishNow.setOnClickListener {
             launchAction {
                 val config = buildConfigFromInputs() ?: return@launchAction
-                if (!ensureReadyForWrite()) {
+                if (!ensureReadyForHealthConnectData()) {
                     return@launchAction
                 }
                 val saved = simulationCoordinator.saveConfig(config)
@@ -163,9 +172,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.textPermissionStatus.text = if (permissionGranted) {
-            "Step write permission is granted. Generated records can be written to Health Connect."
+            "Step read/write permission is granted. Schrittji can write generated records and read Health Connect data for verification."
         } else {
-            "Step write permission is not granted yet. Grant access before backfilling or publishing."
+            "Step read/write permission is not granted yet. Grant access before backfilling, publishing, or opening the Health Connect data view."
         }
 
         binding.textAutomationStatus.text = buildString {
@@ -191,6 +200,7 @@ class MainActivity : AppCompatActivity() {
         binding.textLastPublish.text = config.lastSummary
         binding.textGeneratedData.text = config.lastGeneratedDetails
         binding.buttonGrantPermission.isEnabled = availability == SDK_AVAILABLE && !permissionGranted
+        binding.buttonViewHealthConnectSteps.isEnabled = availability == SDK_AVAILABLE && permissionGranted
     }
 
     private fun populateInputs(config: SimulationConfig) {
@@ -247,14 +257,14 @@ class MainActivity : AppCompatActivity() {
         binding.inputBackfillDays.error = null
     }
 
-    private suspend fun ensureReadyForWrite(): Boolean {
+    private suspend fun ensureReadyForHealthConnectData(): Boolean {
         val availability = healthConnectGateway.availability()
         if (availability != SDK_AVAILABLE) {
             showSnackbar("Health Connect is not ready yet. Install or update it first.")
             return false
         }
         if (!healthConnectGateway.hasRequiredPermissions()) {
-            showSnackbar("Grant Schrittji step permission in Health Connect first.")
+            showSnackbar("Grant Schrittji step read/write permission in Health Connect first.")
             return false
         }
         return true
@@ -309,6 +319,7 @@ class MainActivity : AppCompatActivity() {
     private fun setBusy(isBusy: Boolean) {
         binding.buttonGrantPermission.isEnabled = !isBusy
         binding.buttonOpenHealthConnect.isEnabled = !isBusy
+        binding.buttonViewHealthConnectSteps.isEnabled = !isBusy
         binding.buttonSaveSettings.isEnabled = !isBusy
         binding.buttonBackfill.isEnabled = !isBusy
         binding.buttonPublishNow.isEnabled = !isBusy
