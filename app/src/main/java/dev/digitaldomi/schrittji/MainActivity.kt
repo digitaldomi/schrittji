@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
@@ -13,16 +12,18 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILA
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
+import dev.digitaldomi.schrittji.chart.BarChartPoint
 import dev.digitaldomi.schrittji.databinding.ActivityMainBinding
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
 import dev.digitaldomi.schrittji.simulation.SimulationConfig
 import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
 import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
-import dev.digitaldomi.schrittji.simulation.SimulationProfile
 import dev.digitaldomi.schrittji.simulation.StepPublishingScheduler
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.TextStyle
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -47,7 +48,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupProfileSpinner()
         setupListeners()
 
         lifecycleScope.launch {
@@ -60,13 +60,6 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             refreshUiState()
         }
-    }
-
-    private fun setupProfileSpinner() {
-        val labels = SimulationProfile.entries.map { it.displayName }
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, labels)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerProfile.adapter = adapter
     }
 
     private fun setupListeners() {
@@ -156,6 +149,7 @@ class MainActivity : AppCompatActivity() {
     private suspend fun refreshUiState() {
         val config = simulationCoordinator.loadConfig()
         populateInputs(config)
+        renderProjection(config)
 
         val availability = healthConnectGateway.availability()
         val permissionGranted = if (availability == SDK_AVAILABLE) {
@@ -204,37 +198,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun populateInputs(config: SimulationConfig) {
-        binding.spinnerProfile.setSelection(
-            SimulationProfile.entries.indexOf(config.profile).coerceAtLeast(0),
-            false
-        )
-        binding.editMinSteps.setText(config.minimumDailySteps.toString())
-        binding.editMaxSteps.setText(config.maximumDailySteps.toString())
         binding.editBackfillDays.setText(config.backfillDays.toString())
         binding.switchAutomation.isChecked = config.automationEnabled
+    }
+
+    private fun renderProjection(config: SimulationConfig) {
+        val projection = simulationCoordinator.projectNextDays(config, 7)
+        binding.chartProjection.submitPoints(
+            projection.map { day ->
+                BarChartPoint(
+                    label = day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3),
+                    value = day.totalSteps.toFloat(),
+                    emphasized = day.date.dayOfWeek.value >= 6
+                )
+            }
+        )
+        binding.textProjectionSummary.text = projection.joinToString(separator = "\n") { day ->
+            "${day.date.format(DateTimeFormatter.ofPattern("EEE, MMM d"))}: ${day.totalSteps.formatThousands()} projected steps"
+        }
     }
 
     private fun buildConfigFromInputs(): SimulationConfig? {
         clearValidationErrors()
 
-        val minimumSteps = binding.editMinSteps.text?.toString()?.trim()?.toIntOrNull()
-        val maximumSteps = binding.editMaxSteps.text?.toString()?.trim()?.toIntOrNull()
         val backfillDays = binding.editBackfillDays.text?.toString()?.trim()?.toIntOrNull()
-
-        if (minimumSteps == null || minimumSteps !in 1_000..40_000) {
-            binding.inputMinSteps.error = "Choose a value between 1,000 and 40,000."
-            return null
-        }
-
-        if (maximumSteps == null || maximumSteps !in 1_500..50_000) {
-            binding.inputMaxSteps.error = "Choose a value between 1,500 and 50,000."
-            return null
-        }
-
-        if (minimumSteps >= maximumSteps) {
-            binding.inputMaxSteps.error = "Maximum daily steps must be higher than the minimum."
-            return null
-        }
 
         if (backfillDays == null || backfillDays !in 1..60) {
             binding.inputBackfillDays.error = "Choose a history window between 1 and 60 days."
@@ -243,17 +230,12 @@ class MainActivity : AppCompatActivity() {
 
         val existing = simulationCoordinator.loadConfig()
         return existing.copy(
-            profile = SimulationProfile.entries[binding.spinnerProfile.selectedItemPosition],
-            minimumDailySteps = minimumSteps,
-            maximumDailySteps = maximumSteps,
             backfillDays = backfillDays,
             automationEnabled = binding.switchAutomation.isChecked
         )
     }
 
     private fun clearValidationErrors() {
-        binding.inputMinSteps.error = null
-        binding.inputMaxSteps.error = null
         binding.inputBackfillDays.error = null
     }
 
@@ -330,3 +312,5 @@ class MainActivity : AppCompatActivity() {
         Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
     }
 }
+
+private fun Long.formatThousands(): String = "%,d".format(this)

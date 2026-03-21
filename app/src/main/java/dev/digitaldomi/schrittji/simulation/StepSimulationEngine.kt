@@ -2,6 +2,7 @@ package dev.digitaldomi.schrittji.simulation
 
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
@@ -16,6 +17,11 @@ data class MinuteStepSlice(
     val count: Long
 )
 
+data class DailyProjectedSteps(
+    val date: LocalDate,
+    val totalSteps: Long
+)
+
 private data class WindowPlan(
     val start: ZonedDateTime,
     val end: ZonedDateTime,
@@ -24,6 +30,16 @@ private data class WindowPlan(
     val maxPace: Int,
     val pauseChance: Double,
     val continuity: Double
+)
+
+private data class WeeklyRoutine(
+    val lunchOutDays: Set<DayOfWeek>,
+    val runDays: Set<DayOfWeek>,
+    val errandDays: Set<DayOfWeek>,
+    val weekendEarlyRiserDays: Set<DayOfWeek>,
+    val weekendLongOutingDay: DayOfWeek,
+    val weekendRunDay: DayOfWeek?,
+    val lighterFriday: Boolean
 )
 
 class StepSimulationEngine {
@@ -52,6 +68,21 @@ class StepSimulationEngine {
         return slices.sortedBy { it.start.toInstant() }
     }
 
+    fun projectNextDays(
+        startDate: LocalDate,
+        dayCount: Int,
+        zoneId: ZoneId,
+        config: SimulationConfig
+    ): List<DailyProjectedSteps> {
+        return (0 until dayCount.coerceAtLeast(0)).map { dayOffset ->
+            val date = startDate.plusDays(dayOffset.toLong())
+            DailyProjectedSteps(
+                date = date,
+                totalSteps = generateDay(date, zoneId, config).sumOf { it.count }
+            )
+        }
+    }
+
     private fun generateDay(
         date: LocalDate,
         zoneId: ZoneId,
@@ -60,11 +91,12 @@ class StepSimulationEngine {
         val daySeed = config.randomSeed xor (date.toEpochDay() * -7046029254386353131L)
         val random = Random(daySeed)
         val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
-        val targetSteps = computeTargetSteps(date, config, random, isWeekend)
-        val wakeTime = buildWakeTime(date, zoneId, config.profile, random, isWeekend)
-        val sleepTime = buildSleepTime(date, zoneId, config.profile, random, isWeekend)
+        val weeklyRoutine = buildWeeklyRoutine(date, config)
+        val targetSteps = computeTargetSteps(date, random, isWeekend, weeklyRoutine)
+        val wakeTime = buildWakeTime(date, zoneId, random, isWeekend, weeklyRoutine)
+        val sleepTime = buildSleepTime(date, zoneId, random, isWeekend)
         val minuteCounts = linkedMapOf<ZonedDateTime, Int>()
-        val windows = buildWindows(date, zoneId, wakeTime, sleepTime, config.profile, random, isWeekend)
+        val windows = buildWindows(date, zoneId, wakeTime, sleepTime, random, isWeekend, weeklyRoutine)
 
         val weightTotal = windows.sumOf { it.shareWeight }.takeIf { it > 0.0 } ?: 1.0
         windows.forEach { window ->
@@ -88,53 +120,72 @@ class StepSimulationEngine {
 
     private fun computeTargetSteps(
         date: LocalDate,
-        config: SimulationConfig,
         random: Random,
-        isWeekend: Boolean
+        isWeekend: Boolean,
+        weeklyRoutine: WeeklyRoutine
     ): Int {
-        val minimum = config.minimumDailySteps.coerceAtLeast(1_000)
-        val maximum = config.maximumDailySteps.coerceAtLeast(minimum + 500)
-        val range = maximum - minimum
-        val blendedRandom = (random.nextDouble() + random.nextDouble() + random.nextDouble()) / 3.0
-        val weekdayBias = when (config.profile) {
-            SimulationProfile.OFFICE_COMMUTER -> if (isWeekend) 0.94 else 1.0
-            SimulationProfile.HYBRID_ERRANDS -> if (isWeekend) 1.02 else 0.98
-            SimulationProfile.ACTIVE_SOCIAL -> if (isWeekend) 1.08 else 1.0
+        val base = if (isWeekend) {
+            6_100 + random.nextInt(0, 2_200)
+        } else {
+            7_400 + random.nextInt(0, 1_900)
         }
-        val longerWave = 1.0 + (sin(date.toEpochDay() / 5.5 * PI / 2.0) * 0.07)
-        val target = minimum + (range * blendedRandom).roundToInt()
-        return (target * weekdayBias * longerWave).roundToInt().coerceIn(minimum, maximum)
+
+        val runBonus = when {
+            !isWeekend && date.dayOfWeek in weeklyRoutine.runDays -> 2_400 + random.nextInt(300, 1_200)
+            isWeekend && weeklyRoutine.weekendRunDay == date.dayOfWeek -> 1_100 + random.nextInt(200, 800)
+            else -> 0
+        }
+        val outingBonus = when {
+            isWeekend && weeklyRoutine.weekendLongOutingDay == date.dayOfWeek -> 1_600 + random.nextInt(200, 1_200)
+            !isWeekend && date.dayOfWeek in weeklyRoutine.lunchOutDays -> 550 + random.nextInt(0, 450)
+            else -> 0
+        }
+        val errandBonus = if (!isWeekend && date.dayOfWeek in weeklyRoutine.errandDays) {
+            350 + random.nextInt(0, 650)
+        } else {
+            0
+        }
+        val lightFridayPenalty = if (
+            date.dayOfWeek == DayOfWeek.FRIDAY &&
+            weeklyRoutine.lighterFriday &&
+            !isWeekend &&
+            date.dayOfWeek !in weeklyRoutine.runDays
+        ) {
+            900 + random.nextInt(0, 450)
+        } else {
+            0
+        }
+        val longerWave = 1.0 + (sin(date.toEpochDay() / 6.3 * PI / 2.0) * 0.06)
+        val blendedRandom = (random.nextDouble() + random.nextDouble() + random.nextDouble()) / 3.0
+        val dayTarget = (base + runBonus + outingBonus + errandBonus - lightFridayPenalty)
+            .coerceAtLeast(if (isWeekend) 5_200 else 6_200)
+        return (dayTarget * longerWave * (0.94 + blendedRandom * 0.12)).roundToInt()
     }
 
     private fun buildWakeTime(
         date: LocalDate,
         zoneId: ZoneId,
-        profile: SimulationProfile,
         random: Random,
-        isWeekend: Boolean
+        isWeekend: Boolean,
+        weeklyRoutine: WeeklyRoutine
     ): ZonedDateTime {
-        val baseMinutes = when (profile) {
-            SimulationProfile.OFFICE_COMMUTER -> if (isWeekend) 8 * 60 + 42 else 6 * 60 + 52
-            SimulationProfile.HYBRID_ERRANDS -> if (isWeekend) 8 * 60 + 18 else 7 * 60 + 16
-            SimulationProfile.ACTIVE_SOCIAL -> if (isWeekend) 8 * 60 + 5 else 6 * 60 + 36
+        val baseMinutes = when {
+            !isWeekend -> 6 * 60 + 34
+            date.dayOfWeek in weeklyRoutine.weekendEarlyRiserDays -> 7 * 60 + 6
+            else -> 8 * 60 + 38
         }
-        val jitter = if (isWeekend) random.nextInt(-35, 56) else random.nextInt(-28, 42)
+        val jitter = if (isWeekend) random.nextInt(-28, 58) else random.nextInt(-18, 24)
         return date.atStartOfDay(zoneId).plusMinutes((baseMinutes + jitter).toLong())
     }
 
     private fun buildSleepTime(
         date: LocalDate,
         zoneId: ZoneId,
-        profile: SimulationProfile,
         random: Random,
         isWeekend: Boolean
     ): ZonedDateTime {
-        val baseMinutes = when (profile) {
-            SimulationProfile.OFFICE_COMMUTER -> if (isWeekend) 23 * 60 + 28 else 22 * 60 + 52
-            SimulationProfile.HYBRID_ERRANDS -> if (isWeekend) 23 * 60 + 10 else 23 * 60 + 2
-            SimulationProfile.ACTIVE_SOCIAL -> if (isWeekend) 23 * 60 + 42 else 23 * 60 + 12
-        }
-        val jitter = if (isWeekend) random.nextInt(-25, 41) else random.nextInt(-22, 30)
+        val baseMinutes = if (isWeekend) 23 * 60 + 36 else 22 * 60 + 54
+        val jitter = if (isWeekend) random.nextInt(-24, 44) else random.nextInt(-20, 24)
         return date.atStartOfDay(zoneId).plusMinutes((baseMinutes + jitter).toLong())
     }
 
@@ -143,97 +194,195 @@ class StepSimulationEngine {
         zoneId: ZoneId,
         wakeTime: ZonedDateTime,
         sleepTime: ZonedDateTime,
-        profile: SimulationProfile,
         random: Random,
-        isWeekend: Boolean
+        isWeekend: Boolean,
+        weeklyRoutine: WeeklyRoutine
     ): List<WindowPlan> {
         val windows = mutableListOf<WindowPlan>()
 
         addWindow(
             windows = windows,
-            start = wakeTime.plusMinutes(random.nextInt(12, 32).toLong()),
-            durationMinutes = random.nextInt(7, 18),
-            shareWeight = 0.09,
-            minPace = 58,
-            maxPace = 84,
-            pauseChance = 0.18,
-            continuity = 0.82,
+            start = wakeTime.plusMinutes(random.nextInt(10, 22).toLong()),
+            durationMinutes = random.nextInt(6, 15),
+            shareWeight = if (isWeekend) 0.06 else 0.08,
+            minPace = 48,
+            maxPace = 74,
+            pauseChance = 0.22,
+            continuity = 0.84,
             sleepTime = sleepTime
         )
 
-        when (profile) {
-            SimulationProfile.OFFICE_COMMUTER -> {
-                if (isWeekend) {
-                    addWindow(windows, atTime(date, zoneId, 10, 48, random, 40), random.nextInt(16, 36), 0.19, 82, 112, 0.12, 0.9, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 14, 8, random, 75), random.nextInt(18, 46), 0.26, 78, 114, 0.16, 0.88, sleepTime)
-                    maybeAddWindow(windows, random, 0.72) {
-                        WindowPlan(atTime(date, zoneId, 18, 42, random, 70), atTime(date, zoneId, 19, 24, random, 65), 0.15, 74, 104, 0.2, 0.86)
-                    }
-                } else {
-                    addWindow(windows, atTime(date, zoneId, 7, 44, random, 28), random.nextInt(12, 25), 0.18, 84, 118, 0.08, 0.92, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 10, 34, random, 35), random.nextInt(4, 12), 0.04, 54, 76, 0.28, 0.8, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 12, 22, random, 35), random.nextInt(11, 28), 0.14, 82, 116, 0.12, 0.89, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 15, 26, random, 48), random.nextInt(4, 11), 0.03, 48, 72, 0.28, 0.82, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 17, 48, random, 38), random.nextInt(12, 28), 0.2, 84, 118, 0.1, 0.9, sleepTime)
-                    maybeAddWindow(windows, random, 0.64) {
-                        WindowPlan(atTime(date, zoneId, 19, 4, random, 55), atTime(date, zoneId, 19, 34, random, 55), 0.09, 72, 102, 0.2, 0.85)
-                    }
-                    maybeAddWindow(windows, random, 0.56) {
-                        WindowPlan(atTime(date, zoneId, 20, 6, random, 45), atTime(date, zoneId, 20, 56, random, 55), 0.16, 86, 122, 0.12, 0.9)
-                    }
+        if (isWeekend) {
+            addWindow(
+                windows,
+                atTime(date, zoneId, 10, 46, random, 55),
+                random.nextInt(10, 24),
+                0.09,
+                54,
+                80,
+                0.2,
+                0.84,
+                sleepTime
+            )
+            addWindow(
+                windows,
+                atTime(date, zoneId, if (weeklyRoutine.weekendLongOutingDay == date.dayOfWeek) 13 else 14, 18, random, 85),
+                random.nextInt(
+                    if (weeklyRoutine.weekendLongOutingDay == date.dayOfWeek) 30 else 16,
+                    if (weeklyRoutine.weekendLongOutingDay == date.dayOfWeek) 62 else 32
+                ),
+                if (weeklyRoutine.weekendLongOutingDay == date.dayOfWeek) 0.28 else 0.18,
+                76,
+                112,
+                0.12,
+                0.89,
+                sleepTime
+            )
+            maybeAddWindow(windows, random, 0.82) {
+                WindowPlan(
+                    start = atTime(date, zoneId, 17, 42, random, 90),
+                    end = atTime(date, zoneId, 18, 28, random, 85),
+                    shareWeight = 0.14,
+                    minPace = 66,
+                    maxPace = 96,
+                    pauseChance = 0.18,
+                    continuity = 0.85
+                )
+            }
+            if (weeklyRoutine.weekendRunDay == date.dayOfWeek) {
+                addWindow(
+                    windows,
+                    atTime(date, zoneId, 9, 4, random, 40),
+                    random.nextInt(22, 46),
+                    0.22,
+                    94,
+                    130,
+                    0.08,
+                    0.92,
+                    sleepTime
+                )
+            }
+        } else {
+            addWindow(
+                windows,
+                atTime(date, zoneId, 7, 34, random, 18),
+                random.nextInt(12, 24),
+                0.17,
+                84,
+                116,
+                0.08,
+                0.92,
+                sleepTime
+            )
+            addWindow(
+                windows,
+                atTime(date, zoneId, 10, 26, random, 18),
+                random.nextInt(3, 8),
+                0.025,
+                42,
+                60,
+                0.3,
+                0.8,
+                sleepTime
+            )
+            if (date.dayOfWeek in weeklyRoutine.lunchOutDays) {
+                addWindow(
+                    windows,
+                    atTime(date, zoneId, 12, 18, random, 22),
+                    random.nextInt(16, 32),
+                    0.14,
+                    76,
+                    106,
+                    0.14,
+                    0.88,
+                    sleepTime
+                )
+            } else {
+                addWindow(
+                    windows,
+                    atTime(date, zoneId, 12, 22, random, 16),
+                    random.nextInt(6, 14),
+                    0.06,
+                    48,
+                    72,
+                    0.24,
+                    0.82,
+                    sleepTime
+                )
+            }
+            maybeAddWindow(windows, random, 0.72) {
+                WindowPlan(
+                    start = atTime(date, zoneId, 15, 18, random, 20),
+                    end = atTime(date, zoneId, 15, 28, random, 18),
+                    shareWeight = 0.025,
+                    minPace = 38,
+                    maxPace = 58,
+                    pauseChance = 0.32,
+                    continuity = 0.78
+                )
+            }
+            addWindow(
+                windows,
+                atTime(date, zoneId, 17, 36, random, 26),
+                random.nextInt(12, 24),
+                0.17,
+                82,
+                114,
+                0.1,
+                0.9,
+                sleepTime
+            )
+            if (date.dayOfWeek in weeklyRoutine.errandDays) {
+                maybeAddWindow(windows, random, 0.84) {
+                    WindowPlan(
+                        start = atTime(date, zoneId, 18, 36, random, 30),
+                        end = atTime(date, zoneId, 19, 2, random, 28),
+                        shareWeight = 0.08,
+                        minPace = 64,
+                        maxPace = 94,
+                        pauseChance = 0.18,
+                        continuity = 0.84
+                    )
                 }
             }
-
-            SimulationProfile.HYBRID_ERRANDS -> {
-                if (isWeekend) {
-                    addWindow(windows, atTime(date, zoneId, 9, 58, random, 45), random.nextInt(14, 28), 0.13, 72, 98, 0.2, 0.85, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 12, 54, random, 60), random.nextInt(20, 44), 0.24, 78, 112, 0.14, 0.88, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 17, 18, random, 90), random.nextInt(24, 52), 0.26, 84, 118, 0.1, 0.9, sleepTime)
-                    maybeAddWindow(windows, random, 0.68) {
-                        WindowPlan(atTime(date, zoneId, 20, 18, random, 50), atTime(date, zoneId, 20, 38, random, 45), 0.08, 60, 88, 0.22, 0.82)
-                    }
-                } else {
-                    addWindow(windows, atTime(date, zoneId, 8, 18, random, 35), random.nextInt(8, 18), 0.11, 72, 96, 0.18, 0.86, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 12, 18, random, 45), random.nextInt(12, 28), 0.17, 78, 112, 0.14, 0.88, sleepTime)
-                    maybeAddWindow(windows, random, 0.74) {
-                        WindowPlan(atTime(date, zoneId, 15, 48, random, 75), atTime(date, zoneId, 16, 16, random, 75), 0.13, 68, 98, 0.18, 0.84)
-                    }
-                    addWindow(windows, atTime(date, zoneId, 18, 34, random, 55), random.nextInt(20, 48), 0.23, 82, 118, 0.12, 0.9, sleepTime)
-                    maybeAddWindow(windows, random, 0.6) {
-                        WindowPlan(atTime(date, zoneId, 20, 44, random, 35), atTime(date, zoneId, 20, 58, random, 35), 0.06, 58, 82, 0.24, 0.8)
-                    }
-                }
-            }
-
-            SimulationProfile.ACTIVE_SOCIAL -> {
-                if (isWeekend) {
-                    addWindow(windows, atTime(date, zoneId, 8, 34, random, 38), random.nextInt(20, 40), 0.2, 84, 122, 0.08, 0.92, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 12, 42, random, 55), random.nextInt(16, 34), 0.14, 74, 104, 0.16, 0.88, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 16, 8, random, 90), random.nextInt(18, 42), 0.17, 78, 108, 0.14, 0.88, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 19, 22, random, 75), random.nextInt(26, 56), 0.27, 86, 124, 0.08, 0.91, sleepTime)
-                } else {
-                    addWindow(windows, atTime(date, zoneId, 7, 6, random, 28), random.nextInt(16, 34), 0.19, 84, 124, 0.08, 0.92, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 12, 18, random, 45), random.nextInt(12, 26), 0.14, 76, 108, 0.16, 0.88, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 16, 24, random, 60), random.nextInt(14, 28), 0.15, 76, 108, 0.16, 0.88, sleepTime)
-                    addWindow(windows, atTime(date, zoneId, 19, 8, random, 55), random.nextInt(22, 50), 0.24, 86, 124, 0.1, 0.9, sleepTime)
-                    maybeAddWindow(windows, random, 0.58) {
-                        WindowPlan(atTime(date, zoneId, 21, 18, random, 35), atTime(date, zoneId, 21, 32, random, 30), 0.06, 60, 86, 0.22, 0.82)
-                    }
+            if (date.dayOfWeek in weeklyRoutine.runDays) {
+                addWindow(
+                    windows,
+                    atTime(date, zoneId, 19, 14, random, 24),
+                    random.nextInt(24, 44),
+                    0.22,
+                    96,
+                    132,
+                    0.08,
+                    0.92,
+                    sleepTime
+                )
+            } else {
+                maybeAddWindow(windows, random, 0.42) {
+                    WindowPlan(
+                        start = atTime(date, zoneId, 20, 6, random, 24),
+                        end = atTime(date, zoneId, 20, 22, random, 22),
+                        shareWeight = 0.05,
+                        minPace = 58,
+                        maxPace = 82,
+                        pauseChance = 0.22,
+                        continuity = 0.82
+                    )
                 }
             }
         }
 
-        repeat(random.nextInt(3, 7)) {
+        repeat(if (isWeekend) random.nextInt(4, 7) else random.nextInt(3, 6)) {
             val awakeMinutes = ChronoUnit.MINUTES.between(wakeTime, sleepTime).toInt().coerceAtLeast(90)
             val start = wakeTime.plusMinutes(random.nextInt(35, awakeMinutes - 20).toLong())
             addWindow(
                 windows = windows,
                 start = start,
-                durationMinutes = random.nextInt(2, 7),
-                shareWeight = random.nextDouble(0.01, 0.025),
-                minPace = 38,
-                maxPace = 68,
-                pauseChance = 0.32,
+                durationMinutes = random.nextInt(2, 8),
+                shareWeight = random.nextDouble(0.008, 0.024),
+                minPace = 34,
+                maxPace = 64,
+                pauseChance = 0.34,
                 continuity = 0.76,
                 sleepTime = sleepTime
             )
@@ -341,7 +490,7 @@ class StepSimulationEngine {
             var cursor = clusterStart
             repeat(random.nextInt(1, 4)) {
                 if (cursor.isBefore(sleepTime)) {
-                    minuteCounts[cursor] = (minuteCounts[cursor] ?: 0) + random.nextInt(18, 46)
+                    minuteCounts[cursor] = (minuteCounts[cursor] ?: 0) + random.nextInt(12, 34)
                 }
                 cursor = cursor.plusMinutes(1)
             }
@@ -351,8 +500,8 @@ class StepSimulationEngine {
         if (current < targetSteps / 3) {
             var cursor = wakeTime.plusMinutes(18)
             while (cursor.isBefore(sleepTime.minusMinutes(12))) {
-                if (random.nextDouble() < 0.025) {
-                    minuteCounts[cursor] = (minuteCounts[cursor] ?: 0) + random.nextInt(15, 34)
+                if (random.nextDouble() < 0.02) {
+                    minuteCounts[cursor] = (minuteCounts[cursor] ?: 0) + random.nextInt(10, 24)
                 }
                 cursor = cursor.plusMinutes(1)
             }
@@ -462,5 +611,35 @@ class StepSimulationEngine {
 
     private fun ZonedDateTime.coerceBefore(other: ZonedDateTime): ZonedDateTime {
         return if (this.isAfter(other)) other else this
+    }
+
+    private fun buildWeeklyRoutine(date: LocalDate, config: SimulationConfig): WeeklyRoutine {
+        val monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val weekSeed = config.randomSeed xor (monday.toEpochDay() * -7046029254386353131L)
+        val random = Random(weekSeed)
+        val weekdayCandidates = listOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+        val runPool = listOf(DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+
+        val lunchOutDays = weekdayCandidates.shuffled(random).take(random.nextInt(2, 4)).toSet()
+        val runDays = runPool.shuffled(random).take(random.nextInt(1, 3)).toSet()
+        val errandDays = weekdayCandidates.shuffled(random).take(random.nextInt(1, 3)).toSet()
+        val weekendEarlyRisers = buildSet {
+            if (random.nextDouble() < 0.3) add(DayOfWeek.SATURDAY)
+            if (random.nextDouble() < 0.2) add(DayOfWeek.SUNDAY)
+        }
+
+        return WeeklyRoutine(
+            lunchOutDays = lunchOutDays,
+            runDays = runDays,
+            errandDays = errandDays,
+            weekendEarlyRiserDays = weekendEarlyRisers,
+            weekendLongOutingDay = if (random.nextBoolean()) DayOfWeek.SATURDAY else DayOfWeek.SUNDAY,
+            weekendRunDay = if (random.nextDouble() < 0.38) {
+                if (random.nextBoolean()) DayOfWeek.SATURDAY else DayOfWeek.SUNDAY
+            } else {
+                null
+            },
+            lighterFriday = random.nextDouble() < 0.42
+        )
     }
 }

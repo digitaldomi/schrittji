@@ -33,11 +33,44 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
-        android:text="@string/health_connect_steps_days_header"
+        android:text="@string/health_connect_steps_daily_chart_header"
         android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+    <dev.digitaldomi.schrittji.chart.SimpleBarChartView
+        android:id="@+id/chartDaily"
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/panel_background"
+        android:padding="12dp" />
 
     <TextView
         android:id="@+id/textDailySummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/panel_background"
+        android:padding="16dp"
+        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+    <TextView
+        android:id="@+id/textWeeklyHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="@string/health_connect_steps_weekly_chart_header"
+        android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+    <dev.digitaldomi.schrittji.chart.SimpleBarChartView
+        android:id="@+id/chartWeekly"
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/panel_background"
+        android:padding="12dp" />
+
+    <TextView
+        android:id="@+id/textWeeklySummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"

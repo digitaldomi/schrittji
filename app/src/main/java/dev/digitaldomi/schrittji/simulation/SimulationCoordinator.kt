@@ -16,6 +16,11 @@ data class PublishResult(
     val summary: String
 )
 
+data class ProjectedStepDay(
+    val date: LocalDate,
+    val totalSteps: Long
+)
+
 class SimulationCoordinator(
     private val healthConnectGateway: HealthConnectGateway,
     private val configStore: SimulationConfigStore,
@@ -31,6 +36,16 @@ class SimulationCoordinator(
     }
 
     fun loadConfig(): SimulationConfig = configStore.load()
+
+    fun projectNextDays(
+        config: SimulationConfig,
+        dayCount: Int = 7
+    ): List<ProjectedStepDay> {
+        val startDate = ZonedDateTime.now(zoneId).toLocalDate()
+        return stepSimulationEngine
+            .projectNextDays(startDate, dayCount, zoneId, config)
+            .map { ProjectedStepDay(it.date, it.totalSteps) }
+    }
 
     suspend fun publishBackfill(config: SimulationConfig): PublishResult {
         val storedConfig = configStore.save(config)

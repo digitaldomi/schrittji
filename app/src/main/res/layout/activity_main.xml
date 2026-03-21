@@ -91,46 +91,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="@string/simulation_settings"
+            android:text="@string/pattern_settings"
             android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
 
-        <Spinner
-            android:id="@+id/spinnerProfile"
+        <TextView
+            android:id="@+id/textPatternDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:background="@drawable/panel_background"
-            android:padding="12dp" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/inputMinSteps"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/minimum_daily_steps">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/editMinSteps"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/inputMaxSteps"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/maximum_daily_steps">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/editMaxSteps"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number" />
-        </com.google.android.material.textfield.TextInputLayout>
+            android:padding="16dp"
+            android:text="@string/pattern_description"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/inputBackfillDays"
@@ -213,6 +185,39 @@
 
         <TextView
             android:id="@+id/textGeneratedData"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/panel_background"
+            android:padding="16dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+        <TextView
+            android:id="@+id/textProjectionHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/projection_header"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+        <TextView
+            android:id="@+id/textProjectionDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/projection_description"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+        <dev.digitaldomi.schrittji.chart.SimpleBarChartView
+            android:id="@+id/chartProjection"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/panel_background"
+            android:padding="12dp" />
+
+        <TextView
+            android:id="@+id/textProjectionSummary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
