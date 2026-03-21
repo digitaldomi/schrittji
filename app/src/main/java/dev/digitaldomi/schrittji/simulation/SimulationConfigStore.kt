@@ -24,7 +24,8 @@ data class SimulationConfig(
     val automationEnabled: Boolean = false,
     val randomSeed: Long = 0L,
     val lastPublishedEpochMilli: Long? = null,
-    val lastSummary: String = "No Health Connect data has been written yet."
+    val lastSummary: String = "No Health Connect data has been written yet.",
+    val lastGeneratedDetails: String = "No generated Health Connect step batches yet."
 )
 
 class SimulationConfigStore(context: Context) {
@@ -44,7 +45,11 @@ class SimulationConfigStore(context: Context) {
             lastSummary = preferences.getString(
                 KEY_LAST_SUMMARY,
                 "No Health Connect data has been written yet."
-            ) ?: "No Health Connect data has been written yet."
+            ) ?: "No Health Connect data has been written yet.",
+            lastGeneratedDetails = preferences.getString(
+                KEY_LAST_GENERATED_DETAILS,
+                "No generated Health Connect step batches yet."
+            ) ?: "No generated Health Connect step batches yet."
         )
     }
 
@@ -58,6 +63,7 @@ class SimulationConfigStore(context: Context) {
             .putBoolean(KEY_AUTOMATION_ENABLED, config.automationEnabled)
             .putLong(KEY_RANDOM_SEED, stableSeed)
             .putString(KEY_LAST_SUMMARY, config.lastSummary)
+            .putString(KEY_LAST_GENERATED_DETAILS, config.lastGeneratedDetails)
             .apply()
 
         config.lastPublishedEpochMilli?.let {
@@ -89,6 +95,10 @@ class SimulationConfigStore(context: Context) {
         preferences.edit().putString(KEY_LAST_SUMMARY, summary).apply()
     }
 
+    fun setLastGeneratedDetails(details: String) {
+        preferences.edit().putString(KEY_LAST_GENERATED_DETAILS, details).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "schrittji_simulation"
         private const val KEY_PROFILE = "profile"
@@ -99,5 +109,6 @@ class SimulationConfigStore(context: Context) {
         private const val KEY_RANDOM_SEED = "random_seed"
         private const val KEY_LAST_PUBLISHED = "last_published"
         private const val KEY_LAST_SUMMARY = "last_summary"
+        private const val KEY_LAST_GENERATED_DETAILS = "last_generated_details"
     }
 }

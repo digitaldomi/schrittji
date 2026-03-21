@@ -46,10 +46,18 @@
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
         <TextView
+            android:id="@+id/textAutomationHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/background_top_up_header"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+        <TextView
             android:id="@+id/textAutomationStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:background="@drawable/panel_background"
             android:padding="16dp"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
@@ -171,10 +179,35 @@
             android:text="@string/stop_automation" />
 
         <TextView
-            android:id="@+id/textLastPublish"
+            android:id="@+id/textLastPublishHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
+            android:text="@string/latest_publish_header"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+        <TextView
+            android:id="@+id/textLastPublish"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/panel_background"
+            android:padding="16dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+        <TextView
+            android:id="@+id/textGeneratedDataHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/generated_data_header"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+        <TextView
+            android:id="@+id/textGeneratedData"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:background="@drawable/panel_background"
             android:padding="16dp"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />

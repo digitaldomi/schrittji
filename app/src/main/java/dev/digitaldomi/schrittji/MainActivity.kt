@@ -169,22 +169,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.textAutomationStatus.text = buildString {
-            append(
-                if (config.automationEnabled) {
-                    "Continuous publishing is enabled."
-                } else {
-                    "Continuous publishing is disabled."
-                }
-            )
-            append('\n')
+            if (config.automationEnabled) {
+                appendLine("Enabled: Schrittji schedules an Android WorkManager periodic job.")
+                appendLine("Efficiency: Android batches that work with other background tasks, so it is much lighter than an always-on foreground loop.")
+                appendLine("Cadence: the app asks for roughly 15-minute top-ups, but Android may shift the exact run time for battery efficiency.")
+                append("Behavior: each background run generates the missing step minutes since the last successful publish and writes them to Health Connect.")
+            } else {
+                appendLine("Disabled: no automatic background step injection is scheduled right now.")
+                appendLine("If you enable it, Schrittji uses Android WorkManager rather than an always-running service.")
+                append("When the scheduler runs, it fills the missing time window and writes those steps to Health Connect.")
+            }
+            appendLine()
+            appendLine()
             append(
                 config.lastPublishedEpochMilli?.let {
-                    "Last published upper bound: ${Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).format(formatter)}"
-                } ?: "Last published upper bound: none yet."
+                    "Last successful publish upper bound: ${Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).format(formatter)}"
+                } ?: "Last successful publish upper bound: none yet."
             )
         }
 
         binding.textLastPublish.text = config.lastSummary
+        binding.textGeneratedData.text = config.lastGeneratedDetails
         binding.buttonGrantPermission.isEnabled = availability == SDK_AVAILABLE && !permissionGranted
     }
 

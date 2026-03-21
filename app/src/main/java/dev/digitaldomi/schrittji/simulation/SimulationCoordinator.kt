@@ -2,6 +2,7 @@ package dev.digitaldomi.schrittji.simulation
 
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
 import java.time.Duration
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -22,6 +23,8 @@ class SimulationCoordinator(
 ) {
     private val zoneId: ZoneId = ZoneId.systemDefault()
     private val formatter = DateTimeFormatter.ofPattern("EEE, MMM d HH:mm")
+    private val dayFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     fun saveConfig(config: SimulationConfig): SimulationConfig {
         return configStore.save(config)
@@ -77,21 +80,27 @@ class SimulationCoordinator(
         if (!safeStart.isBefore(safeEnd)) {
             val summary = "$label skipped because there was no missing time range to generate."
             configStore.setLastSummary(summary)
+            configStore.setLastGeneratedDetails(
+                "No new step minutes were created because the requested time window was empty."
+            )
             return PublishResult(0, 0, safeStart, safeEnd, summary)
         }
 
         val slices = stepSimulationEngine.generateBetween(safeStart, safeEnd, config)
         val insertedRecords = healthConnectGateway.insertSlices(slices)
         val stepCount = slices.sumOf { it.count }
+        val generatedDetails = buildGeneratedDetails(label, safeStart, safeEnd, slices)
         val summary = if (slices.isEmpty()) {
             "$label produced no slices for ${safeStart.format(formatter)} to ${safeEnd.format(formatter)}."
         } else {
-            "$label wrote ${stepCount.formatThousands()} steps across $insertedRecords minute records " +
-                "from ${safeStart.format(formatter)} to ${safeEnd.format(formatter)}."
+            "$label created and added ${stepCount.formatThousands()} steps to Health Connect " +
+                "across $insertedRecords minute records from ${safeStart.format(formatter)} " +
+                "to ${safeEnd.format(formatter)}."
         }
 
         configStore.setLastPublished(safeEnd.toInstant())
         configStore.setLastSummary(summary)
+        configStore.setLastGeneratedDetails(generatedDetails)
 
         return PublishResult(
             recordCount = insertedRecords,
@@ -100,6 +109,54 @@ class SimulationCoordinator(
             end = safeEnd,
             summary = summary
         )
+    }
+
+    private fun buildGeneratedDetails(
+        label: String,
+        start: ZonedDateTime,
+        end: ZonedDateTime,
+        slices: List<MinuteStepSlice>
+    ): String {
+        if (slices.isEmpty()) {
+            return "$label did not create any new step records for ${start.format(formatter)} to ${end.format(formatter)}."
+        }
+
+        val byDay = slices.groupBy { it.start.withZoneSameInstant(zoneId).toLocalDate() }
+            .toSortedMap()
+
+        return buildString {
+            appendLine("$label window written to Health Connect")
+            appendLine("${start.format(formatter)} - ${end.format(formatter)}")
+            appendLine("Total: ${slices.sumOf { it.count }.formatThousands()} steps in ${slices.size} minute records")
+            appendLine()
+
+            byDay.entries.forEachIndexed { index, (day, daySlices) ->
+                append(renderDaySummary(day, daySlices))
+                if (index < byDay.size - 1) {
+                    appendLine()
+                    appendLine()
+                }
+            }
+        }.trim()
+    }
+
+    private fun renderDaySummary(day: LocalDate, daySlices: List<MinuteStepSlice>): String {
+        val first = daySlices.minBy { it.start.toInstant() }
+        val last = daySlices.maxBy { it.end.toInstant() }
+        val steps = daySlices.sumOf { it.count }
+        return buildString {
+            append(day.format(dayFormatter))
+            append(": ")
+            append(steps.formatThousands())
+            append(" steps in ")
+            append(daySlices.size)
+            append(" minute records")
+            appendLine()
+            append("Active span: ")
+            append(first.start.format(timeFormatter))
+            append(" - ")
+            append(last.end.format(timeFormatter))
+        }
     }
 }
 

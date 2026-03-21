@@ -29,13 +29,15 @@ class StepPublishingWorker(
         }
 
         if (healthConnectGateway.availability() != SDK_AVAILABLE) {
-            configStore.setLastSummary("Automation is paused because Health Connect is not available.")
+            configStore.setLastSummary(
+                "Background top-ups are paused because Health Connect is not available."
+            )
             return Result.success()
         }
 
         if (!healthConnectGateway.hasRequiredPermissions()) {
             configStore.setLastSummary(
-                "Automation is paused until Schrittji regains Health Connect write permission."
+                "Background top-ups are paused until Schrittji regains Health Connect write permission."
             )
             return Result.success()
         }
