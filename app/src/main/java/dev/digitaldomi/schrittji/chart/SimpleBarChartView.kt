@@ -20,6 +20,7 @@ class SimpleBarChartView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
     private val density = resources.displayMetrics.density
+    private val scaledDensity = density * resources.configuration.fontScale
     private val primaryColor = context.getColor(R.color.brand_primary)
     private val emphasizedColor = context.getColor(R.color.brand_primary_dark)
     private val textColor = context.getColor(R.color.brand_text)
@@ -42,12 +43,12 @@ class SimpleBarChartView @JvmOverloads constructor(
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
-        textSize = 11f * resources.displayMetrics.scaledDensity
+        textSize = 11f * scaledDensity
     }
     private val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
-        textSize = 10f * resources.displayMetrics.scaledDensity
+        textSize = 10f * scaledDensity
         alpha = 180
     }
 
