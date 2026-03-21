@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Schrittji</string>
+    <string name="subtitle">Generate minute-level walking patterns and publish them to Health Connect for device-side app testing.</string>
+    <string name="grant_health_permission">Grant Health Connect step permission</string>
+    <string name="open_health_connect">Open Health Connect</string>
+    <string name="simulation_settings">Simulation settings</string>
+    <string name="minimum_daily_steps">Minimum daily steps</string>
+    <string name="maximum_daily_steps">Maximum daily steps</string>
+    <string name="backfill_days">Backfill days</string>
+    <string name="continuous_publishing">Continuously top up recent minutes every ~15 minutes</string>
+    <string name="save_settings">Save settings</string>
+    <string name="backfill_history">Backfill selected history window</string>
+    <string name="publish_missing_recent_data">Publish missing recent data</string>
+    <string name="stop_automation">Stop automation</string>
+    <string name="app_note">Notes: the generator uses repeatable daily structure plus controlled randomness, writes minute-sized step records into Health Connect, and avoids any debug-only behavior switches in app logic.</string>
+</resources>

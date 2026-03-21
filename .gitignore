@@ -1,0 +1,11 @@
+.gradle/
+/local.properties
+/.idea/
+/.kotlin/
+/build/
+/captures/
+/*.iml
+/app/build/
+/app/release/
+/app/debug/
+/artifacts/
