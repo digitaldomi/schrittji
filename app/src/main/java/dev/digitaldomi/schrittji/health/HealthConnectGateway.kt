@@ -136,4 +136,36 @@ class HealthConnectGateway(private val context: Context) {
             records = orderedRecords
         )
     }
+
+    suspend fun readStepEntriesForDate(date: LocalDate): List<HealthConnectStepRecordEntry> {
+        val allRecords = mutableListOf<HealthConnectStepRecordEntry>()
+        var pageToken: String? = null
+        val start = date.atStartOfDay(zoneId).toInstant()
+        val end = date.plusDays(1).atStartOfDay(zoneId).toInstant()
+
+        do {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = StepsRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(start, end),
+                    ascendingOrder = true,
+                    pageSize = 1_000,
+                    pageToken = pageToken
+                )
+            )
+            allRecords += response.records.map { record ->
+                val sourcePackage = record.metadata.dataOrigin.packageName.orEmpty()
+                HealthConnectStepRecordEntry(
+                    start = ZonedDateTime.ofInstant(record.startTime, zoneId),
+                    end = ZonedDateTime.ofInstant(record.endTime, zoneId),
+                    count = record.count,
+                    sourcePackage = sourcePackage,
+                    isFromSchrittji = sourcePackage == context.packageName
+                )
+            }
+            pageToken = response.pageToken
+        } while (pageToken != null)
+
+        return allRecords.sortedBy { it.start.toInstant() }
+    }
 }

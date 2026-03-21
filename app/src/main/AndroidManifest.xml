@@ -11,6 +11,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Schrittji">
         <activity
+            android:name=".DayDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Schrittji" />
+
+        <activity
             android:name=".HealthConnectStepsActivity"
             android:exported="false"
             android:theme="@style/Theme.Schrittji" />

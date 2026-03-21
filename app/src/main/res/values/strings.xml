@@ -18,8 +18,10 @@
     <string name="generated_data_header">Generated step data written to Health Connect</string>
     <string name="projection_header">Next 7-day projection</string>
     <string name="projection_description">Projected full-day totals for the next 7 calendar days using Schrittji\'s fixed real-life schedule generator.</string>
+    <string name="view_projection_day_detail">Open projection day detail</string>
     <string name="health_connect_steps_title">Health Connect steps</string>
     <string name="refresh_health_connect_steps">Refresh from Health Connect</string>
+    <string name="view_health_connect_day_detail">Open Health Connect day detail</string>
     <string name="health_connect_steps_summary_header">All visible step records</string>
     <string name="health_connect_steps_days_header">Daily totals</string>
     <string name="health_connect_steps_daily_chart_header">Daily pattern (last 7 days)</string>
@@ -27,5 +29,12 @@
     <string name="health_connect_steps_records_header">Raw step records</string>
     <string name="health_connect_steps_loading">Loading step data from Health Connect…</string>
     <string name="health_connect_steps_empty">No step records were returned by Health Connect.</string>
+    <string name="day_detail_title_projection">Projection day detail</string>
+    <string name="day_detail_title_health_connect">Health Connect day detail</string>
+    <string name="previous_day">Previous day</string>
+    <string name="next_day">Next day</string>
+    <string name="day_detail_summary_header">Selected day summary</string>
+    <string name="day_detail_entries_header">Selected day entries</string>
+    <string name="day_detail_empty">No step entries exist for this day.</string>
     <string name="app_note">Notes: the generator uses one repeatable office-life pattern with layered random variation, writes minute-sized step records into Health Connect, and uses WorkManager instead of an always-on service so background top-ups stay system-managed and energy efficient.</string>
 </resources>

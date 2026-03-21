@@ -225,6 +225,14 @@
             android:padding="16dp"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonViewProjectionDayDetail"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/view_projection_day_detail" />
+
         <TextView
             android:id="@+id/textAppNote"
             android:layout_width="match_parent"

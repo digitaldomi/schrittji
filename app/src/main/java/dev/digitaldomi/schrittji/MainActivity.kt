@@ -80,6 +80,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        binding.buttonViewProjectionDayDetail.setOnClickListener {
+            startActivity(
+                DayDetailActivity.newIntent(
+                    this,
+                    DayDetailSource.PROJECTION,
+                    java.time.LocalDate.now()
+                )
+            )
+        }
+
         binding.buttonSaveSettings.setOnClickListener {
             launchAction {
                 val config = buildConfigFromInputs() ?: return@launchAction

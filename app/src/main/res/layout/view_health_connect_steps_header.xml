@@ -11,6 +11,14 @@
         android:layout_height="wrap_content"
         android:text="@string/refresh_health_connect_steps" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonOpenDayDetail"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/view_health_connect_day_detail" />
+
     <TextView
         android:id="@+id/textSummaryHeader"
         android:layout_width="match_parent"

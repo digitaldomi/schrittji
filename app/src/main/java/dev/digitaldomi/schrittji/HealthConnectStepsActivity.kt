@@ -44,6 +44,15 @@ class HealthConnectStepsActivity : AppCompatActivity() {
         headerBinding.buttonRefresh.setOnClickListener {
             loadData()
         }
+        headerBinding.buttonOpenDayDetail.setOnClickListener {
+            startActivity(
+                DayDetailActivity.newIntent(
+                    this,
+                    DayDetailSource.HEALTH_CONNECT,
+                    LocalDate.now()
+                )
+            )
+        }
 
         loadData()
     }

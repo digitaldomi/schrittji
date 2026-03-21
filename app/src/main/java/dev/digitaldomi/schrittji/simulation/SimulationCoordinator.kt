@@ -21,6 +21,12 @@ data class ProjectedStepDay(
     val totalSteps: Long
 )
 
+data class ProjectedStepDayDetail(
+    val date: LocalDate,
+    val totalSteps: Long,
+    val slices: List<MinuteStepSlice>
+)
+
 class SimulationCoordinator(
     private val healthConnectGateway: HealthConnectGateway,
     private val configStore: SimulationConfigStore,
@@ -45,6 +51,20 @@ class SimulationCoordinator(
         return stepSimulationEngine
             .projectNextDays(startDate, dayCount, zoneId, config)
             .map { ProjectedStepDay(it.date, it.totalSteps) }
+    }
+
+    fun projectDayDetail(
+        config: SimulationConfig,
+        date: LocalDate
+    ): ProjectedStepDayDetail {
+        val start = date.atStartOfDay(zoneId)
+        val end = start.plusDays(1)
+        val slices = stepSimulationEngine.generateBetween(start, end, config)
+        return ProjectedStepDayDetail(
+            date = date,
+            totalSteps = slices.sumOf { it.count },
+            slices = slices
+        )
     }
 
     suspend fun publishBackfill(config: SimulationConfig): PublishResult {
