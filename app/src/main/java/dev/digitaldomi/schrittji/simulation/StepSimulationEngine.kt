@@ -92,7 +92,7 @@ class StepSimulationEngine {
         val random = Random(daySeed)
         val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
         val weeklyRoutine = buildWeeklyRoutine(date, config)
-        val targetSteps = computeTargetSteps(date, random, isWeekend, weeklyRoutine)
+        val targetSteps = computeTargetSteps(date, config, random, isWeekend, weeklyRoutine)
         val wakeTime = buildWakeTime(date, zoneId, random, isWeekend, weeklyRoutine)
         val sleepTime = buildSleepTime(date, zoneId, random, isWeekend)
         val minuteCounts = linkedMapOf<ZonedDateTime, Int>()
@@ -120,10 +120,13 @@ class StepSimulationEngine {
 
     private fun computeTargetSteps(
         date: LocalDate,
+        config: SimulationConfig,
         random: Random,
         isWeekend: Boolean,
         weeklyRoutine: WeeklyRoutine
     ): Int {
+        val minSteps = config.minimumDailySteps.coerceAtLeast(1_000)
+        val maxSteps = config.maximumDailySteps.coerceAtLeast(minSteps + 500)
         val base = if (isWeekend) {
             6_100 + random.nextInt(0, 2_200)
         } else {
@@ -160,6 +163,7 @@ class StepSimulationEngine {
         val dayTarget = (base + runBonus + outingBonus + errandBonus - lightFridayPenalty)
             .coerceAtLeast(if (isWeekend) 5_200 else 6_200)
         return (dayTarget * longerWave * (0.94 + blendedRandom * 0.12)).roundToInt()
+            .coerceIn(minSteps, maxSteps)
     }
 
     private fun buildWakeTime(

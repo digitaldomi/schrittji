@@ -208,6 +208,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun populateInputs(config: SimulationConfig) {
+        binding.editMinSteps.setText(config.minimumDailySteps.toString())
+        binding.editMaxSteps.setText(config.maximumDailySteps.toString())
         binding.editBackfillDays.setText(config.backfillDays.toString())
         binding.switchAutomation.isChecked = config.automationEnabled
     }
@@ -231,7 +233,24 @@ class MainActivity : AppCompatActivity() {
     private fun buildConfigFromInputs(): SimulationConfig? {
         clearValidationErrors()
 
+        val minimumDailySteps = binding.editMinSteps.text?.toString()?.trim()?.toIntOrNull()
+        val maximumDailySteps = binding.editMaxSteps.text?.toString()?.trim()?.toIntOrNull()
         val backfillDays = binding.editBackfillDays.text?.toString()?.trim()?.toIntOrNull()
+
+        if (minimumDailySteps == null || minimumDailySteps !in 1_000..30_000) {
+            binding.inputMinSteps.error = "Choose a value between 1,000 and 30,000."
+            return null
+        }
+
+        if (maximumDailySteps == null || maximumDailySteps !in 2_000..35_000) {
+            binding.inputMaxSteps.error = "Choose a value between 2,000 and 35,000."
+            return null
+        }
+
+        if (minimumDailySteps >= maximumDailySteps) {
+            binding.inputMaxSteps.error = "Maximum daily steps must be higher than the minimum."
+            return null
+        }
 
         if (backfillDays == null || backfillDays !in 1..60) {
             binding.inputBackfillDays.error = "Choose a history window between 1 and 60 days."
@@ -240,12 +259,16 @@ class MainActivity : AppCompatActivity() {
 
         val existing = simulationCoordinator.loadConfig()
         return existing.copy(
+            minimumDailySteps = minimumDailySteps,
+            maximumDailySteps = maximumDailySteps,
             backfillDays = backfillDays,
             automationEnabled = binding.switchAutomation.isChecked
         )
     }
 
     private fun clearValidationErrors() {
+        binding.inputMinSteps.error = null
+        binding.inputMaxSteps.error = null
         binding.inputBackfillDays.error = null
     }
 

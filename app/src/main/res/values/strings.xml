@@ -7,6 +7,8 @@
     <string name="view_health_connect_steps">View all Health Connect steps</string>
     <string name="pattern_settings">Real-life pattern</string>
     <string name="pattern_description">Weekdays follow an office routine almost all the time: early wake-up, commute walking, very little movement during work hours, lunch out only on some days, the walk home, and occasional evening runs. Weekends usually start later, but some weekends still begin early, with longer outings and lighter social walking mixed in.</string>
+    <string name="minimum_daily_steps">Minimum daily steps from Schrittji only</string>
+    <string name="maximum_daily_steps">Maximum daily steps from Schrittji only</string>
     <string name="backfill_days">Backfill days</string>
     <string name="continuous_publishing">Enable battery-aware background top-ups (WorkManager, about every 15 minutes)</string>
     <string name="save_settings">Save schedule settings</string>

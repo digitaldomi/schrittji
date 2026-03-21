@@ -5,6 +5,8 @@ import java.security.SecureRandom
 import java.time.Instant
 
 data class SimulationConfig(
+    val minimumDailySteps: Int = 7_500,
+    val maximumDailySteps: Int = 22_000,
     val backfillDays: Int = 14,
     val automationEnabled: Boolean = false,
     val randomSeed: Long = 0L,
@@ -20,6 +22,8 @@ class SimulationConfigStore(context: Context) {
     fun load(): SimulationConfig {
         val rawLastPublished = preferences.getLong(KEY_LAST_PUBLISHED, Long.MIN_VALUE)
         return SimulationConfig(
+            minimumDailySteps = preferences.getInt(KEY_MINIMUM_DAILY_STEPS, 7_500),
+            maximumDailySteps = preferences.getInt(KEY_MAXIMUM_DAILY_STEPS, 22_000),
             backfillDays = preferences.getInt(KEY_BACKFILL_DAYS, 14),
             automationEnabled = preferences.getBoolean(KEY_AUTOMATION_ENABLED, false),
             randomSeed = preferences.getLong(KEY_RANDOM_SEED, 0L),
@@ -38,6 +42,8 @@ class SimulationConfigStore(context: Context) {
     fun save(config: SimulationConfig): SimulationConfig {
         val stableSeed = config.randomSeed.takeUnless { it == 0L } ?: secureRandom.nextLong()
         preferences.edit()
+            .putInt(KEY_MINIMUM_DAILY_STEPS, config.minimumDailySteps)
+            .putInt(KEY_MAXIMUM_DAILY_STEPS, config.maximumDailySteps)
             .putInt(KEY_BACKFILL_DAYS, config.backfillDays)
             .putBoolean(KEY_AUTOMATION_ENABLED, config.automationEnabled)
             .putLong(KEY_RANDOM_SEED, stableSeed)
@@ -80,6 +86,8 @@ class SimulationConfigStore(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "schrittji_simulation"
+        private const val KEY_MINIMUM_DAILY_STEPS = "minimum_daily_steps"
+        private const val KEY_MAXIMUM_DAILY_STEPS = "maximum_daily_steps"
         private const val KEY_BACKFILL_DAYS = "backfill_days"
         private const val KEY_AUTOMATION_ENABLED = "automation_enabled"
         private const val KEY_RANDOM_SEED = "random_seed"
