@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Schrittji</string>
-    <string name="subtitle">Generate minute-level walking patterns, write them to Health Connect, and optionally keep topping up new steps with Android&apos;s battery-aware background scheduling.</string>
+    <string name="app_subtitle">Generate minute-level walking patterns, write them to Health Connect, and optionally keep topping up new steps with Android\'s battery-aware background scheduling.</string>
     <string name="grant_health_permission">Grant Health Connect step permission</string>
     <string name="open_health_connect">Open Health Connect</string>
     <string name="simulation_settings">Simulation settings</string>
