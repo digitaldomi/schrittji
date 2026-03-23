@@ -51,4 +51,7 @@
     <string name="day_detail_summary_header">Selected day summary</string>
     <string name="day_detail_entries_header">Selected day entries</string>
     <string name="day_detail_empty">No step entries exist for this day.</string>
+    <string name="workout_title_running">Running</string>
+    <string name="workout_title_cycling">Cycling</string>
+    <string name="workout_info_source_projected">Projected Schrittji workout</string>
 </resources>

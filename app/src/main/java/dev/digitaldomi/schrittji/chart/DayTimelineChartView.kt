@@ -3,9 +3,15 @@ package dev.digitaldomi.schrittji.chart
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.view.GestureDetectorCompat
 import dev.digitaldomi.schrittji.R
 import kotlin.math.max
 
@@ -15,12 +21,28 @@ enum class TimelineSeries {
     WORKOUT
 }
 
+enum class TimelineWorkoutKind {
+    RUNNING,
+    CYCLING
+}
+
+data class WorkoutTapInfo(
+    val kind: TimelineWorkoutKind,
+    val title: String,
+    val detail: String,
+    val isProjected: Boolean
+)
+
 data class TimelineBarEntry(
     val startMinute: Int,
     val endMinute: Int,
     val value: Float,
     val series: TimelineSeries = TimelineSeries.PROJECTED,
-    val emphasized: Boolean = false
+    val emphasized: Boolean = false,
+    val workoutKind: TimelineWorkoutKind? = null,
+    val workoutTitle: String? = null,
+    val workoutDetail: String? = null,
+    val workoutIsProjected: Boolean = true
 )
 
 class DayTimelineChartView @JvmOverloads constructor(
@@ -76,9 +98,43 @@ class DayTimelineChartView @JvmOverloads constructor(
 
     private var buckets: List<TimelineBucket> = emptyList()
     private var maxValue: Float = 1f
+    private var workoutOverlays: List<WorkoutOverlay> = emptyList()
+    private var hitTargets: List<Pair<RectF, WorkoutTapInfo>> = emptyList()
+
+    private val runDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_run)?.mutate()
+    private val cycleDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_cycle)?.mutate()
+
+    private var workoutTapListener: ((WorkoutTapInfo) -> Unit)? = null
+
+    private val gestureDetector = GestureDetectorCompat(
+        context,
+        object : GestureDetector.SimpleOnGestureListener() {
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                val x = e.x
+                val y = e.y
+                hitTargets.forEach { (rect, info) ->
+                    if (rect.contains(x, y)) {
+                        workoutTapListener?.invoke(info)
+                        performClick()
+                        return true
+                    }
+                }
+                return false
+            }
+        }
+    )
+
+    init {
+        isClickable = true
+    }
+
+    fun setOnWorkoutTapListener(listener: ((WorkoutTapInfo) -> Unit)?) {
+        workoutTapListener = listener
+    }
 
     fun submitEntries(entries: List<TimelineBarEntry>) {
         buckets = buildBuckets(entries)
+        workoutOverlays = extractWorkoutOverlays(entries)
         maxValue = max(
             1f,
             buckets.maxOfOrNull { max(it.existingValue, it.projectedValue) } ?: 1f
@@ -87,11 +143,21 @@ class DayTimelineChartView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val desiredHeight = (250 * density).toInt()
+        val desiredHeight = (230 * density).toInt()
         setMeasuredDimension(
             resolveSize(suggestedMinimumWidth, widthMeasureSpec),
             resolveSize(desiredHeight, heightMeasureSpec)
         )
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val handled = gestureDetector.onTouchEvent(event)
+        return handled || super.onTouchEvent(event)
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -99,14 +165,15 @@ class DayTimelineChartView @JvmOverloads constructor(
 
         val chartLeft = paddingLeft + 12f * density
         val chartRight = width - paddingRight - 12f * density
-        val chartTop = paddingTop + 24f * density
-        val chartBottom = height - paddingBottom - 28f * density
+        val chartTop = paddingTop + 14f * density
+        val chartBottom = height - paddingBottom - 24f * density
         val chartWidth = chartRight - chartLeft
-        val chartHeight = chartBottom - chartTop
 
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
         canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint)
         canvas.drawText("max ${formatValue(maxValue)}", chartLeft, chartTop - (6f * density), valuePaint)
+
+        val newHits = mutableListOf<Pair<RectF, WorkoutTapInfo>>()
 
         if (buckets.isEmpty()) {
             canvas.drawText(
@@ -116,6 +183,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                 labelPaint
             )
             drawHourLabels(canvas, chartLeft, chartRight, chartBottom)
+            hitTargets = emptyList()
             return
         }
 
@@ -183,7 +251,50 @@ class DayTimelineChartView @JvmOverloads constructor(
             }
         }
 
+        val iconSize = (18f * density).toInt()
+        val touchPad = 12f * density
+        workoutOverlays.forEach { overlay ->
+            val centerX = minuteToX(overlay.midpointMinute, chartLeft, chartWidth)
+            val iconTop = chartTop + (6f * density)
+            val iconLeft = (centerX - iconSize / 2f).toInt()
+            val iconTopI = iconTop.toInt()
+            val iconRight = iconLeft + iconSize
+            val iconBottom = iconTopI + iconSize
+
+            val drawable = when (overlay.kind) {
+                TimelineWorkoutKind.RUNNING -> runDrawable
+                TimelineWorkoutKind.CYCLING -> cycleDrawable
+            }
+            if (drawable != null) {
+                val tint = if (overlay.isProjected) projectedColor else existingColor
+                DrawableCompat.setTint(drawable, tint)
+                drawable.bounds = Rect(iconLeft, iconTopI, iconRight, iconBottom)
+                drawable.draw(canvas)
+            }
+
+            val tap = WorkoutTapInfo(
+                kind = overlay.kind,
+                title = overlay.title,
+                detail = overlay.detail,
+                isProjected = overlay.isProjected
+            )
+            newHits.add(
+                RectF(
+                    centerX - touchPad,
+                    iconTop - touchPad * 0.5f,
+                    centerX + touchPad,
+                    iconBottom + touchPad * 0.5f
+                ) to tap
+            )
+        }
+        hitTargets = newHits
+
         drawHourLabels(canvas, chartLeft, chartRight, chartBottom)
+    }
+
+    private fun minuteToX(minute: Int, chartLeft: Float, chartWidth: Float): Float {
+        val m = minute.coerceIn(0, 1440)
+        return chartLeft + (m / 1440f) * chartWidth
     }
 
     private fun drawHourLabels(canvas: Canvas, chartLeft: Float, chartRight: Float, chartBottom: Float) {
@@ -261,7 +372,11 @@ class DayTimelineChartView @JvmOverloads constructor(
                         current.projectedValue += portion
                         current.projectedEmphasized = current.projectedEmphasized || entry.emphasized
                     }
-                    TimelineSeries.WORKOUT -> current.workoutMarker = true
+                    TimelineSeries.WORKOUT -> {
+                        if (entry.workoutKind == null) {
+                            current.workoutMarker = true
+                        }
+                    }
                 }
                 minute = bucketEnd
             }
@@ -269,7 +384,29 @@ class DayTimelineChartView @JvmOverloads constructor(
 
         return buckets
     }
+
+    private fun extractWorkoutOverlays(entries: List<TimelineBarEntry>): List<WorkoutOverlay> {
+        return entries.mapNotNull { entry ->
+            if (entry.series != TimelineSeries.WORKOUT) return@mapNotNull null
+            val kind = entry.workoutKind ?: return@mapNotNull null
+            WorkoutOverlay(
+                midpointMinute = ((entry.startMinute + entry.endMinute) / 2).coerceIn(0, 1440),
+                kind = kind,
+                title = entry.workoutTitle.orEmpty(),
+                detail = entry.workoutDetail.orEmpty(),
+                isProjected = entry.workoutIsProjected
+            )
+        }
+    }
 }
+
+private data class WorkoutOverlay(
+    val midpointMinute: Int,
+    val kind: TimelineWorkoutKind,
+    val title: String,
+    val detail: String,
+    val isProjected: Boolean
+)
 
 private data class TimelineBucket(
     var existingValue: Float = 0f,
