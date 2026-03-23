@@ -64,7 +64,7 @@ class DayTimelineChartView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val desiredHeight = (250 * density).toInt()
+        val desiredHeight = (220 * density).toInt()
         setMeasuredDimension(
             resolveSize(suggestedMinimumWidth, widthMeasureSpec),
             resolveSize(desiredHeight, heightMeasureSpec)
@@ -76,8 +76,8 @@ class DayTimelineChartView @JvmOverloads constructor(
 
         val chartLeft = paddingLeft + 12f * density
         val chartRight = width - paddingRight - 12f * density
-        val chartTop = paddingTop + 24f * density
-        val chartBottom = height - paddingBottom - 28f * density
+        val chartTop = paddingTop + 16f * density
+        val chartBottom = height - paddingBottom - 20f * density
         val chartWidth = chartRight - chartLeft
         val chartHeight = chartBottom - chartTop
 

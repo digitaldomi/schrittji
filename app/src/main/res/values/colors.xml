@@ -6,4 +6,6 @@
     <color name="panel_background">#F1F8F5</color>
     <color name="panel_stroke">#C7DDD5</color>
     <color name="surface_background">#FCFFFD</color>
+    <color name="chart_existing_health">#2E7D32</color>
+    <color name="chart_projected_schrittji">#1565C0</color>
 </resources>

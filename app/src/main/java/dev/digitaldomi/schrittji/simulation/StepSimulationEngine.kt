@@ -22,6 +22,15 @@ data class DailyProjectedSteps(
     val totalSteps: Long
 )
 
+/**
+ * UI hints for which narrative activities the fixed schedule assigns to a calendar day.
+ * Used for icons on the detail comparison chart (evening run vs cycling-style outing).
+ */
+data class DayActivityLabels(
+    val hasEveningRun: Boolean,
+    val hasCyclingStyleOuting: Boolean
+)
+
 private data class WindowPlan(
     val start: ZonedDateTime,
     val end: ZonedDateTime,
@@ -43,6 +52,19 @@ private data class WeeklyRoutine(
 )
 
 class StepSimulationEngine {
+    fun dayActivityLabels(date: LocalDate, config: SimulationConfig): DayActivityLabels {
+        val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
+        val weeklyRoutine = buildWeeklyRoutine(date, config)
+        val hasEveningRun = (!isWeekend && date.dayOfWeek in weeklyRoutine.runDays) ||
+            (isWeekend && weeklyRoutine.weekendRunDay == date.dayOfWeek)
+        val hasCyclingStyleOuting = (isWeekend && date.dayOfWeek == weeklyRoutine.weekendLongOutingDay) ||
+            (!isWeekend && date.dayOfWeek in weeklyRoutine.errandDays)
+        return DayActivityLabels(
+            hasEveningRun = hasEveningRun,
+            hasCyclingStyleOuting = hasCyclingStyleOuting
+        )
+    }
+
     fun generateBetween(
         startInclusive: ZonedDateTime,
         endExclusive: ZonedDateTime,

@@ -4,18 +4,25 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.tabs.TabLayout
 import dev.digitaldomi.schrittji.chart.BarChartPoint
+import dev.digitaldomi.schrittji.chart.DetailComparisonBar
 import dev.digitaldomi.schrittji.databinding.ActivityHealthConnectStepsBinding
 import dev.digitaldomi.schrittji.databinding.ViewHealthConnectStepsHeaderBinding
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
 import dev.digitaldomi.schrittji.health.HealthConnectStepDaySummary
 import dev.digitaldomi.schrittji.health.HealthConnectStepsSnapshot
+import dev.digitaldomi.schrittji.simulation.DayActivityLabels
+import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
+import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import kotlinx.coroutines.launch
 
@@ -24,10 +31,16 @@ class HealthConnectStepsActivity : AppCompatActivity() {
     private lateinit var headerBinding: ViewHealthConnectStepsHeaderBinding
 
     private val healthConnectGateway by lazy { HealthConnectGateway(applicationContext) }
+    private val simulationCoordinator by lazy {
+        SimulationCoordinator(healthConnectGateway, SimulationConfigStore(applicationContext))
+    }
     private val adapter by lazy { StepRecordAdapter(this) }
     private val formatter = DateTimeFormatter.ofPattern("EEE, MMM d HH:mm")
     private val dayFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
     private val weekFormatter = DateTimeFormatter.ofPattern("MMM d")
+
+    private var lastSnapshot: HealthConnectStepsSnapshot? = null
+    private var detailSelectedDate: LocalDate = LocalDate.now()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +54,9 @@ class HealthConnectStepsActivity : AppCompatActivity() {
         binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
         binding.toolbar.setNavigationOnClickListener { finish() }
 
+        setupChartTabs()
+        setupDetailPanel()
+
         headerBinding.buttonRefresh.setOnClickListener {
             loadData()
         }
@@ -49,12 +65,107 @@ class HealthConnectStepsActivity : AppCompatActivity() {
                 DayDetailActivity.newIntent(
                     this,
                     DayDetailSource.HEALTH_CONNECT,
-                    LocalDate.now()
+                    detailSelectedDate
                 )
             )
         }
 
         loadData()
+    }
+
+    private fun setupChartTabs() {
+        val tabLayout = headerBinding.tabsChartPanels
+        tabLayout.addTab(tabLayout.newTab().setText(getString(R.string.chart_tab_detail)))
+        tabLayout.addTab(tabLayout.newTab().setText(getString(R.string.chart_tab_daily)))
+        tabLayout.addTab(tabLayout.newTab().setText(getString(R.string.chart_tab_weekly)))
+        tabLayout.addTab(tabLayout.newTab().setText(getString(R.string.chart_tab_monthly)))
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                selectChartPanel(tab.position)
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab) {
+            }
+
+            override fun onTabReselected(tab: TabLayout.Tab) {
+            }
+        })
+        selectChartPanel(0)
+    }
+
+    private fun selectChartPanel(position: Int) {
+        headerBinding.panelDetail.isVisible = position == 0
+        headerBinding.panelDaily.isVisible = position == 1
+        headerBinding.panelWeekly.isVisible = position == 2
+        headerBinding.panelMonthly.isVisible = position == 3
+    }
+
+    private fun setupDetailPanel() {
+        headerBinding.buttonDetailPreviousDay.setOnClickListener {
+            detailSelectedDate = detailSelectedDate.minusDays(1)
+            lastSnapshot?.let { renderDetailPanel(it) }
+        }
+        headerBinding.buttonDetailNextDay.setOnClickListener {
+            detailSelectedDate = detailSelectedDate.plusDays(1)
+            lastSnapshot?.let { renderDetailPanel(it) }
+        }
+        headerBinding.buttonDetailToday.setOnClickListener {
+            detailSelectedDate = LocalDate.now()
+            lastSnapshot?.let { renderDetailPanel(it) }
+        }
+        headerBinding.chartDetailComparison.onBarClickListener = { bar ->
+            lastSnapshot?.let { showDetailBarDialog(bar, it) }
+        }
+    }
+
+    private fun showDetailBarDialog(bar: DetailComparisonBar, snapshot: HealthConnectStepsSnapshot) {
+        val config = simulationCoordinator.loadConfig()
+        val labels = simulationCoordinator.dayActivityLabels(detailSelectedDate, config)
+        val byDate = snapshot.daySummaries.associateBy { it.date }
+        val existingSteps = byDate[detailSelectedDate]?.totalSteps ?: 0L
+        val projected = simulationCoordinator.projectDayDetail(config, detailSelectedDate)
+        val activityText = buildActivityLines(labels)
+
+        val (titleRes, message) = when (bar) {
+            DetailComparisonBar.EXISTING -> {
+                R.string.detail_dialog_existing_title to buildString {
+                    appendLine(getString(R.string.detail_dialog_steps_line, existingSteps.formatThousands()))
+                    appendLine()
+                    appendLine(activityText)
+                    appendLine()
+                    append(getString(R.string.detail_dialog_hc_note))
+                }
+            }
+            DetailComparisonBar.PROJECTED -> {
+                R.string.detail_dialog_projected_title to buildString {
+                    appendLine(getString(R.string.detail_dialog_steps_line, projected.totalSteps.formatThousands()))
+                    appendLine()
+                    appendLine(activityText)
+                    appendLine()
+                    append(getString(R.string.detail_dialog_projection_note))
+                }
+            }
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(titleRes))
+            .setMessage(message)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun buildActivityLines(labels: DayActivityLabels): String {
+        return buildString {
+            if (labels.hasEveningRun) {
+                appendLine(getString(R.string.detail_tooltip_run))
+            }
+            if (labels.hasCyclingStyleOuting) {
+                appendLine(getString(R.string.detail_tooltip_cycle))
+            }
+            if (!labels.hasEveningRun && !labels.hasCyclingStyleOuting) {
+                appendLine(getString(R.string.detail_tooltip_mixed_walk))
+            }
+        }.trim()
     }
 
     private fun loadData() {
@@ -65,8 +176,10 @@ class HealthConnectStepsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val snapshot = healthConnectGateway.readAllStepsSnapshot()
+                lastSnapshot = snapshot
                 renderSnapshot(snapshot)
             } catch (exception: Exception) {
+                lastSnapshot = null
                 Snackbar.make(
                     binding.root,
                     exception.message ?: "Failed to read Health Connect step data.",
@@ -116,6 +229,16 @@ class HealthConnectStepsActivity : AppCompatActivity() {
                 "Week of ${week.start.format(weekFormatter)} - ${week.totalSteps.formatThousands()} steps"
             }
         }
+
+        val monthlyPoints = buildMonthlySummaries(snapshot.daySummaries)
+        headerBinding.textMonthlySummary.text = if (monthlyPoints.all { it.second == 0L }) {
+            "No monthly totals are available because Health Connect returned no visible step records."
+        } else {
+            monthlyPoints.joinToString(separator = "\n") { (ym, total) ->
+                "${ym.format(DateTimeFormatter.ofPattern("MMMM yyyy"))} - ${total.formatThousands()} steps"
+            }
+        }
+
         headerBinding.chartDaily.submitPoints(
             buildRecentDailyPoints(snapshot.daySummaries).map { day ->
                 BarChartPoint(
@@ -134,9 +257,38 @@ class HealthConnectStepsActivity : AppCompatActivity() {
                 )
             }
         )
+        headerBinding.chartMonthly.submitPoints(
+            monthlyPoints.map { (ym, total) ->
+                BarChartPoint(
+                    label = ym.format(DateTimeFormatter.ofPattern("MMM yy")),
+                    value = total.toFloat(),
+                    emphasized = false
+                )
+            }
+        )
+
+        renderDetailPanel(snapshot)
 
         adapter.submit(snapshot.records)
         binding.textEmptyState.isVisible = snapshot.records.isEmpty()
+    }
+
+    private fun renderDetailPanel(snapshot: HealthConnectStepsSnapshot) {
+        val config = simulationCoordinator.loadConfig()
+        val labels = simulationCoordinator.dayActivityLabels(detailSelectedDate, config)
+        val byDate = snapshot.daySummaries.associateBy { it.date }
+        val existing = (byDate[detailSelectedDate]?.totalSteps ?: 0L).toFloat()
+        val projected = simulationCoordinator.projectDayDetail(config, detailSelectedDate).totalSteps.toFloat()
+
+        headerBinding.textDetailSelectedDate.text = detailSelectedDate.format(dayFormatter)
+        headerBinding.buttonDetailToday.isEnabled = detailSelectedDate != LocalDate.now()
+
+        headerBinding.chartDetailComparison.submitData(
+            existingSteps = existing,
+            projectedSteps = projected,
+            showRunIcon = labels.hasEveningRun,
+            showCycleIcon = labels.hasCyclingStyleOuting
+        )
     }
 
     private fun buildRecentDailyPoints(daySummaries: List<HealthConnectStepDaySummary>): List<HealthConnectStepDaySummary> {
@@ -159,6 +311,25 @@ class HealthConnectStepsActivity : AppCompatActivity() {
                 totalSteps = days.sumOf { summaryByDate[it]?.totalSteps ?: 0L }
             )
         }
+    }
+
+    private fun buildMonthlySummaries(
+        daySummaries: List<HealthConnectStepDaySummary>
+    ): List<Pair<YearMonth, Long>> {
+        val summaryByDate = daySummaries.associateBy { it.date }
+        val today = LocalDate.now()
+        return (0..5).map { offset ->
+            val ym = YearMonth.from(today.minusMonths(offset.toLong()))
+            val first = ym.atDay(1)
+            val last = ym.atEndOfMonth()
+            var total = 0L
+            var d = first
+            while (!d.isAfter(last)) {
+                total += summaryByDate[d]?.totalSteps ?: 0L
+                d = d.plusDays(1)
+            }
+            ym to total
+        }.reversed()
     }
 }
 

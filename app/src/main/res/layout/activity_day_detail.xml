@@ -21,7 +21,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -60,7 +60,7 @@
                 android:id="@+id/textSummaryHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="10dp"
                 android:text="@string/day_detail_summary_header"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
@@ -68,24 +68,24 @@
                 android:id="@+id/textSummary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:background="@drawable/panel_background"
-                android:padding="16dp"
+                android:padding="12dp"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
             <dev.digitaldomi.schrittji.chart.DayTimelineChartView
                 android:id="@+id/chartDayTimeline"
                 android:layout_width="match_parent"
-                android:layout_height="260dp"
-                android:layout_marginTop="16dp"
+                android:layout_height="220dp"
+                android:layout_marginTop="8dp"
                 android:background="@drawable/panel_background"
-                android:padding="12dp" />
+                android:padding="8dp" />
 
             <TextView
                 android:id="@+id/textEntriesHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="10dp"
                 android:text="@string/day_detail_entries_header"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
@@ -93,9 +93,9 @@
                 android:id="@+id/textEntries"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:background="@drawable/panel_background"
-                android:padding="16dp"
+                android:padding="12dp"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
         </LinearLayout>
     </ScrollView>

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
@@ -16,14 +17,14 @@
         style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="8dp"
         android:text="@string/view_health_connect_day_detail" />
 
     <TextView
         android:id="@+id/textSummaryHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="12dp"
         android:text="@string/health_connect_steps_summary_header"
         android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
@@ -31,67 +32,218 @@
         android:id="@+id/textSummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         android:background="@drawable/panel_background"
-        android:padding="16dp"
+        android:padding="12dp"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
-    <TextView
-        android:id="@+id/textDailyHeader"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="@string/health_connect_steps_daily_chart_header"
-        android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
-
-    <dev.digitaldomi.schrittji.chart.SimpleBarChartView
-        android:id="@+id/chartDaily"
-        android:layout_width="match_parent"
-        android:layout_height="220dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/panel_background"
-        android:padding="12dp" />
-
-    <TextView
-        android:id="@+id/textDailySummary"
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabsChartPanels"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="@drawable/panel_background"
-        android:padding="16dp"
-        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+        app:tabGravity="fill"
+        app:tabMode="fixed" />
 
-    <TextView
-        android:id="@+id/textWeeklyHeader"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="@string/health_connect_steps_weekly_chart_header"
-        android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+        android:layout_marginTop="4dp">
 
-    <dev.digitaldomi.schrittji.chart.SimpleBarChartView
-        android:id="@+id/chartWeekly"
-        android:layout_width="match_parent"
-        android:layout_height="220dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/panel_background"
-        android:padding="12dp" />
+        <LinearLayout
+            android:id="@+id/panelDetail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/textWeeklySummary"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/panel_background"
-        android:padding="16dp"
-        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="4dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:drawablePadding="8dp"
+                    android:gravity="center_vertical"
+                    android:text="@string/detail_chart_legend_existing"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    app:drawableStartCompat="@drawable/legend_dot_existing" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:drawablePadding="8dp"
+                    android:gravity="center_vertical"
+                    android:text="@string/detail_chart_legend_projected"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    app:drawableStartCompat="@drawable/legend_dot_projected" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonDetailPreviousDay"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="40dp"
+                    android:paddingVertical="4dp"
+                    android:text="@string/previous_day" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonDetailToday"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:minHeight="40dp"
+                    android:paddingVertical="4dp"
+                    android:text="@string/button_today" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonDetailNextDay"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="40dp"
+                    android:paddingVertical="4dp"
+                    android:text="@string/next_day" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/textDetailSelectedDate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+            <dev.digitaldomi.schrittji.chart.DetailComparisonChartView
+                android:id="@+id/chartDetailComparison"
+                android:layout_width="match_parent"
+                android:layout_height="188dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/panel_background"
+                android:padding="8dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/panelDaily"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/textDailyHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/health_connect_steps_daily_chart_header"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+            <dev.digitaldomi.schrittji.chart.SimpleBarChartView
+                android:id="@+id/chartDaily"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/panel_background"
+                android:padding="8dp" />
+
+            <TextView
+                android:id="@+id/textDailySummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/panel_background"
+                android:padding="12dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/panelWeekly"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/textWeeklyHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/health_connect_steps_weekly_chart_header"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+            <dev.digitaldomi.schrittji.chart.SimpleBarChartView
+                android:id="@+id/chartWeekly"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/panel_background"
+                android:padding="8dp" />
+
+            <TextView
+                android:id="@+id/textWeeklySummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/panel_background"
+                android:padding="12dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/panelMonthly"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/textMonthlyHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/health_connect_steps_monthly_chart_header"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+            <dev.digitaldomi.schrittji.chart.SimpleBarChartView
+                android:id="@+id/chartMonthly"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/panel_background"
+                android:padding="8dp" />
+
+            <TextView
+                android:id="@+id/textMonthlySummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/panel_background"
+                android:padding="12dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+        </LinearLayout>
+    </FrameLayout>
 
     <TextView
         android:id="@+id/textRecordsHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="6dp"
         android:text="@string/health_connect_steps_records_header"
         android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 </LinearLayout>

@@ -53,6 +53,10 @@ class SimulationCoordinator(
             .map { ProjectedStepDay(it.date, it.totalSteps) }
     }
 
+    fun dayActivityLabels(date: LocalDate, config: SimulationConfig): DayActivityLabels {
+        return stepSimulationEngine.dayActivityLabels(date, config)
+    }
+
     fun projectDayDetail(
         config: SimulationConfig,
         date: LocalDate
