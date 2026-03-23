@@ -22,6 +22,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 data class HealthConnectStepRecordEntry(
     val start: ZonedDateTime,
@@ -29,6 +31,14 @@ data class HealthConnectStepRecordEntry(
     val count: Long,
     val sourcePackage: String,
     val isFromSchrittji: Boolean
+)
+
+data class HealthConnectExerciseSession(
+    val start: ZonedDateTime,
+    val end: ZonedDateTime,
+    val type: WorkoutType,
+    val title: String?,
+    val notes: String?
 )
 
 data class HealthConnectStepDaySummary(
@@ -51,9 +61,11 @@ data class HealthConnectStepsSnapshot(
 class HealthConnectGateway(private val context: Context) {
     private val healthConnectClient by lazy { HealthConnectClient.getOrCreate(context) }
     private val zoneId: ZoneId = ZoneId.systemDefault()
+    private val exerciseTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     val requiredPermissions: Set<String> = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
+        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(StepsRecord::class),
         HealthPermission.getWritePermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(DistanceRecord::class),
@@ -226,5 +238,57 @@ class HealthConnectGateway(private val context: Context) {
         } while (pageToken != null)
 
         return allRecords.sortedBy { it.start.toInstant() }
+    }
+
+    suspend fun readExerciseSessionsForDate(date: LocalDate): List<HealthConnectExerciseSession> {
+        val allSessions = mutableListOf<HealthConnectExerciseSession>()
+        var pageToken: String? = null
+        val start = date.atStartOfDay(zoneId).toInstant()
+        val end = date.plusDays(1).atStartOfDay(zoneId).toInstant()
+
+        do {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = ExerciseSessionRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(start, end),
+                    ascendingOrder = true,
+                    pageSize = 1_000,
+                    pageToken = pageToken
+                )
+            )
+            allSessions += response.records.mapNotNull { record ->
+                val mapped = mapExerciseTypeToWorkoutType(record.exerciseType) ?: return@mapNotNull null
+                HealthConnectExerciseSession(
+                    start = ZonedDateTime.ofInstant(record.startTime, zoneId),
+                    end = ZonedDateTime.ofInstant(record.endTime, zoneId),
+                    type = mapped,
+                    title = record.title,
+                    notes = record.notes
+                )
+            }
+            pageToken = response.pageToken
+        } while (pageToken != null)
+
+        return allSessions.sortedBy { it.start.toInstant() }
+    }
+
+    private fun mapExerciseTypeToWorkoutType(exerciseType: Int): WorkoutType? {
+        return when (exerciseType) {
+            ExerciseSessionRecord.EXERCISE_TYPE_RUNNING -> WorkoutType.RUNNING
+            ExerciseSessionRecord.EXERCISE_TYPE_BIKING -> WorkoutType.CYCLING
+            else -> null
+        }
+    }
+
+    fun formatExerciseSessionDetail(session: HealthConnectExerciseSession): String {
+        val duration = ChronoUnit.MINUTES.between(session.start, session.end).coerceAtLeast(1)
+        return buildString {
+            appendLine(
+                "${session.start.format(exerciseTimeFormatter)}–${session.end.format(exerciseTimeFormatter)}"
+            )
+            appendLine("Duration: $duration min")
+            session.notes?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
+            append("Source: Health Connect")
+        }
     }
 }
