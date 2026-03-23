@@ -141,7 +141,7 @@ class SimulationCoordinator(
         configStore.setLastGeneratedDetails(generatedDetails)
 
         return PublishResult(
-            recordCount = insertedRecords,
+            recordCount = insertedStepRecords + insertedWorkouts,
             stepCount = stepCount,
             start = safeStart,
             end = safeEnd,
