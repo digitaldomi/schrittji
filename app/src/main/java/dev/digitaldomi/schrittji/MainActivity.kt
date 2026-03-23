@@ -1,28 +1,30 @@
 package dev.digitaldomi.schrittji
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
-import androidx.health.connect.client.PermissionController
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.snackbar.Snackbar
-import dev.digitaldomi.schrittji.chart.BarChartPoint
+import dev.digitaldomi.schrittji.chart.DualSeriesBarPoint
+import dev.digitaldomi.schrittji.chart.TimelineSeries
+import dev.digitaldomi.schrittji.chart.TimelineBarEntry
 import dev.digitaldomi.schrittji.databinding.ActivityMainBinding
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
+import dev.digitaldomi.schrittji.health.HealthConnectStepsSnapshot
 import dev.digitaldomi.schrittji.simulation.SimulationConfig
 import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
 import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
-import dev.digitaldomi.schrittji.simulation.StepPublishingScheduler
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.TextStyle
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import kotlinx.coroutines.launch
 
@@ -35,13 +37,9 @@ class MainActivity : AppCompatActivity() {
         SimulationCoordinator(healthConnectGateway, configStore)
     }
     private val formatter = DateTimeFormatter.ofPattern("EEE, MMM d HH:mm")
-    private val permissionsLauncher = registerForActivityResult(
-        PermissionController.createRequestPermissionResultContract()
-    ) {
-        lifecycleScope.launch {
-            refreshUiState()
-        }
-    }
+    private var latestSnapshot: HealthConnectStepsSnapshot? = null
+    private var chartMode: ChartMode = ChartMode.DETAIL
+    private var selectedProjectionDate: LocalDate = LocalDate.now()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,103 +61,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        binding.buttonGrantPermission.setOnClickListener {
-            permissionsLauncher.launch(healthConnectGateway.requiredPermissions)
+        binding.buttonSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
-
-        binding.buttonOpenHealthConnect.setOnClickListener {
-            openHealthConnect()
-        }
-
-        binding.buttonViewHealthConnectSteps.setOnClickListener {
-            launchAction {
-                if (!ensureReadyForHealthConnectData()) {
-                    return@launchAction
-                }
-                startActivity(Intent(this@MainActivity, HealthConnectStepsActivity::class.java))
+        binding.toggleChartMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            chartMode = when (checkedId) {
+                R.id.buttonModeDetail -> ChartMode.DETAIL
+                R.id.buttonModeWeekly -> ChartMode.WEEKLY
+                R.id.buttonModeMonthly -> ChartMode.MONTHLY
+                else -> ChartMode.DAILY
             }
+            renderOverviewChart(simulationCoordinator.loadConfig())
         }
-
-        binding.buttonViewProjectionDayDetail.setOnClickListener {
-            startActivity(
-                DayDetailActivity.newIntent(
-                    this,
-                    DayDetailSource.PROJECTION,
-                    java.time.LocalDate.now()
-                )
-            )
+        binding.buttonPreviousProjectionDay.setOnClickListener {
+            selectedProjectionDate = selectedProjectionDate.minusDays(1)
+            renderOverviewChart(simulationCoordinator.loadConfig())
         }
-
-        binding.buttonSaveSettings.setOnClickListener {
-            launchAction {
-                val config = buildConfigFromInputs() ?: return@launchAction
-                val saved = simulationCoordinator.saveConfig(config)
-                syncAutomation(saved)
-                showSnackbar(
-                    if (saved.automationEnabled) {
-                        "Settings saved and continuous publishing is scheduled."
-                    } else {
-                        "Settings saved."
-                    }
-                )
-            }
+        binding.buttonNextProjectionDay.setOnClickListener {
+            selectedProjectionDate = selectedProjectionDate.plusDays(1)
+            renderOverviewChart(simulationCoordinator.loadConfig())
         }
-
-        binding.buttonBackfill.setOnClickListener {
-            launchAction {
-                val config = buildConfigFromInputs() ?: return@launchAction
-                if (!ensureReadyForHealthConnectData()) {
-                    return@launchAction
-                }
-                val saved = simulationCoordinator.saveConfig(config)
-                syncAutomation(saved)
-                val result = simulationCoordinator.publishBackfill(saved)
-                showSnackbar(result.summary)
-            }
-        }
-
-        binding.buttonPublishNow.setOnClickListener {
-            launchAction {
-                val config = buildConfigFromInputs() ?: return@launchAction
-                if (!ensureReadyForHealthConnectData()) {
-                    return@launchAction
-                }
-                val saved = simulationCoordinator.saveConfig(config)
-                syncAutomation(saved)
-                val result = simulationCoordinator.publishSinceLast(saved)
-                showSnackbar(result.summary)
-            }
-        }
-
-        binding.buttonStopAutomation.setOnClickListener {
-            launchAction {
-                val updated = simulationCoordinator.disableAutomation()
-                StepPublishingScheduler.cancel(this@MainActivity)
-                binding.switchAutomation.isChecked = false
-                showSnackbar("Continuous publishing disabled.")
-                populateInputs(updated)
-            }
-        }
-    }
-
-    private fun launchAction(block: suspend () -> Unit) {
-        setBusy(true)
-        lifecycleScope.launch {
-            try {
-                block()
-            } catch (exception: Exception) {
-                showSnackbar(exception.message ?: "Operation failed.")
-            } finally {
-                setBusy(false)
-                refreshUiState()
-            }
+        binding.buttonTodayProjectionDay.setOnClickListener {
+            selectedProjectionDate = LocalDate.now()
+            renderOverviewChart(simulationCoordinator.loadConfig())
         }
     }
 
     private suspend fun refreshUiState() {
         val config = simulationCoordinator.loadConfig()
-        populateInputs(config)
-        renderProjection(config)
 
         val availability = healthConnectGateway.availability()
         val permissionGranted = if (availability == SDK_AVAILABLE) {
@@ -167,183 +97,225 @@ class MainActivity : AppCompatActivity() {
         } else {
             false
         }
-
-        binding.textHealthStatus.text = when (availability) {
-            SDK_AVAILABLE -> "Health Connect is available on this device."
-            SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> "Health Connect needs to be installed or updated before Schrittji can publish steps."
-            SDK_UNAVAILABLE -> "Health Connect is not supported on this Android version."
-            else -> "Health Connect status is unknown."
-        }
-
-        binding.textPermissionStatus.text = if (permissionGranted) {
-            "Step read/write permission is granted. Schrittji can write generated records and read Health Connect data for verification."
-        } else {
-            "Step read/write permission is not granted yet. Grant access before backfilling, publishing, or opening the Health Connect data view."
-        }
-
-        binding.textAutomationStatus.text = buildString {
-            if (config.automationEnabled) {
-                appendLine("Enabled: Schrittji schedules an Android WorkManager periodic job.")
-                appendLine("Efficiency: Android batches that work with other background tasks, so it is much lighter than an always-on foreground loop.")
-                appendLine("Cadence: the app asks for roughly 15-minute top-ups, but Android may shift the exact run time for battery efficiency.")
-                append("Behavior: each background run generates the missing step minutes since the last successful publish and writes them to Health Connect.")
-            } else {
-                appendLine("Disabled: no automatic background step injection is scheduled right now.")
-                appendLine("If you enable it, Schrittji uses Android WorkManager rather than an always-running service.")
-                append("When the scheduler runs, it fills the missing time window and writes those steps to Health Connect.")
+        latestSnapshot = if (permissionGranted) {
+            try {
+                healthConnectGateway.readAllStepsSnapshot()
+            } catch (_: Exception) {
+                null
             }
-            appendLine()
-            appendLine()
-            append(
-                config.lastPublishedEpochMilli?.let {
-                    "Last successful publish upper bound: ${Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).format(formatter)}"
-                } ?: "Last successful publish upper bound: none yet."
+        } else {
+            null
+        }
+
+        updateStatus(
+            view = binding.dotHealthConnect,
+            textView = binding.textHealthConnectStatus,
+            ok = availability == SDK_AVAILABLE,
+            okText = "Health Connect connected",
+            badText = when (availability) {
+                SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> "Health Connect needs install/update"
+                SDK_UNAVAILABLE -> "Health Connect not supported"
+                else -> "Health Connect unavailable"
+            }
+        )
+        updateStatus(
+            view = binding.dotPermissions,
+            textView = binding.textPermissionsStatus,
+            ok = permissionGranted,
+            okText = "Permissions granted",
+            badText = "Permissions missing"
+        )
+        val updatesOk = config.lastPublishedEpochMilli?.let {
+            Instant.ofEpochMilli(it).isAfter(Instant.now().minusSeconds(45 * 60))
+        } == true
+        updateStatus(
+            view = binding.dotUpdates,
+            textView = binding.textUpdatesStatus,
+            ok = updatesOk,
+            okText = "Updates current",
+            badText = "Updates need sync"
+        )
+
+        if (binding.toggleChartMode.checkedButtonId == View.NO_ID) {
+            binding.toggleChartMode.check(R.id.buttonModeDetail)
+        } else {
+            renderOverviewChart(config)
+        }
+    }
+
+    private fun renderOverviewChart(config: SimulationConfig) {
+        if (chartMode == ChartMode.DETAIL) {
+            renderProjectionDetail(config)
+            return
+        }
+        binding.panelLegend.visibility = View.VISIBLE
+        binding.panelDetailContent.visibility = View.GONE
+        binding.panelOverviewContent.visibility = View.VISIBLE
+        val points = when (chartMode) {
+            ChartMode.DAILY -> buildDailyOverview(config)
+            ChartMode.WEEKLY -> buildWeeklyOverview(config)
+            ChartMode.MONTHLY -> buildMonthlyOverview(config)
+            ChartMode.DETAIL -> emptyList()
+        }
+        binding.chartOverview.submit(points)
+        val existingTotal = points.sumOf { it.existingValue.toLong() }
+        val projectedTotal = points.sumOf { it.projectedValue.toLong() }
+        binding.textChartSummary.text = buildString {
+            append("Existing: ${existingTotal.formatThousands()} steps")
+            append("  |  ")
+            append("Projected: ${projectedTotal.formatThousands()} steps")
+            latestSnapshot?.latestEnd?.let {
+                appendLine()
+                append("Latest Health Connect end: ${it.format(formatter)}")
+            }
+        }
+    }
+
+    private fun renderProjectionDetail(config: SimulationConfig) {
+        binding.panelLegend.visibility = View.VISIBLE
+        binding.panelDetailContent.visibility = View.VISIBLE
+        binding.panelOverviewContent.visibility = View.GONE
+        binding.textSelectedProjectionDate.text =
+            selectedProjectionDate.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
+        binding.buttonTodayProjectionDay.isEnabled = selectedProjectionDate != LocalDate.now()
+
+        val detail = simulationCoordinator.projectDayDetail(config, selectedProjectionDate)
+        val existingEntries = latestSnapshot?.records
+            ?.filter { it.start.toLocalDate() == selectedProjectionDate }
+            .orEmpty()
+        binding.chartProjectionDetail.submitEntries(
+            existingEntries.map { entry ->
+                TimelineBarEntry(
+                    startMinute = entry.start.hour * 60 + entry.start.minute,
+                    endMinute = entry.end.hour * 60 + entry.end.minute,
+                    value = entry.count.toFloat(),
+                    series = TimelineSeries.EXISTING,
+                    emphasized = false
+                )
+            } + detail.slices.map { slice ->
+                TimelineBarEntry(
+                    startMinute = slice.start.hour * 60 + slice.start.minute,
+                    endMinute = slice.end.hour * 60 + slice.end.minute,
+                    value = slice.count.toFloat(),
+                    series = TimelineSeries.PROJECTED,
+                    emphasized = false
+                )
+            } + detail.workouts.map { workout ->
+                TimelineBarEntry(
+                    startMinute = workout.start.hour * 60 + workout.start.minute,
+                    endMinute = workout.end.hour * 60 + workout.end.minute,
+                    value = 1f,
+                    series = TimelineSeries.WORKOUT,
+                    emphasized = false
+                )
+            }
+        )
+        binding.textProjectionDetailSummary.text = buildString {
+            appendLine("Existing Health Connect: ${existingEntries.sumOf { it.count }.formatThousands()} steps")
+            appendLine("Projected total: ${detail.totalSteps.formatThousands()} steps")
+            appendLine("Generated entries: ${detail.slices.size}")
+            if (detail.workouts.isNotEmpty()) {
+                append("Workouts: ")
+                append(detail.workouts.joinToString { workout ->
+                    "${workout.title} ${workout.start.format(DateTimeFormatter.ofPattern("HH:mm"))}-${workout.end.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+                })
+            } else {
+                append("Workouts: none")
+            }
+        }
+    }
+
+    private fun buildDailyOverview(config: SimulationConfig): List<DualSeriesBarPoint> {
+        val actualByDate = latestSnapshot?.daySummaries?.associateBy { it.date }.orEmpty()
+        val today = LocalDate.now()
+        val projection = simulationCoordinator.projectNextDays(config, 7).associateBy { it.date }
+        val past = (6 downTo 0).map { today.minusDays(it.toLong()) }.map { date ->
+            DualSeriesBarPoint(
+                label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3),
+                existingValue = (actualByDate[date]?.totalSteps ?: 0L).toFloat(),
+                projectedValue = 0f
             )
         }
-
-        binding.textLastPublish.text = config.lastSummary
-        binding.textGeneratedData.text = config.lastGeneratedDetails
-        binding.buttonGrantPermission.isEnabled = availability == SDK_AVAILABLE && !permissionGranted
-        binding.buttonViewHealthConnectSteps.isEnabled = availability == SDK_AVAILABLE && permissionGranted
+        val future = (1..7).map { today.plusDays(it.toLong()) }.map { date ->
+            DualSeriesBarPoint(
+                label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3),
+                existingValue = 0f,
+                projectedValue = (projection[date]?.totalSteps ?: 0L).toFloat()
+            )
+        }
+        return past + future
     }
 
-    private fun populateInputs(config: SimulationConfig) {
-        binding.editMinSteps.setText(config.minimumDailySteps.toString())
-        binding.editMaxSteps.setText(config.maximumDailySteps.toString())
-        binding.editBackfillDays.setText(config.backfillDays.toString())
-        binding.switchAutomation.isChecked = config.automationEnabled
+    private fun buildWeeklyOverview(config: SimulationConfig): List<DualSeriesBarPoint> {
+        val dayMap = latestSnapshot?.daySummaries?.associateBy { it.date }.orEmpty()
+        val currentWeek = LocalDate.now().with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+        val actualWeeks = (7 downTo 0).map { currentWeek.minusWeeks(it.toLong()) }.map { weekStart ->
+            val total = (0..6).sumOf { dayMap[weekStart.plusDays(it.toLong())]?.totalSteps ?: 0L }
+            DualSeriesBarPoint(
+                label = weekStart.format(DateTimeFormatter.ofPattern("MM/dd")),
+                existingValue = total.toFloat(),
+                projectedValue = 0f
+            )
+        }
+        val projectedDays = simulationCoordinator.projectNextDays(config, 28).groupBy {
+            it.date.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+        }
+        val projectedWeeks = (1..4).map { currentWeek.plusWeeks(it.toLong()) }.map { weekStart ->
+            DualSeriesBarPoint(
+                label = weekStart.format(DateTimeFormatter.ofPattern("MM/dd")),
+                existingValue = 0f,
+                projectedValue = projectedDays[weekStart].orEmpty().sumOf { it.totalSteps }.toFloat()
+            )
+        }
+        return actualWeeks + projectedWeeks
     }
 
-    private fun renderProjection(config: SimulationConfig) {
-        val projection = simulationCoordinator.projectNextDays(config, 7)
-        binding.chartProjection.submitPoints(
-            projection.map { day ->
-                BarChartPoint(
-                    label = day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3),
-                    value = day.totalSteps.toFloat(),
-                    emphasized = day.date.dayOfWeek.value >= 6
-                )
-            }
+    private fun buildMonthlyOverview(config: SimulationConfig): List<DualSeriesBarPoint> {
+        val dayMap = latestSnapshot?.daySummaries?.associateBy { it.date }.orEmpty()
+        val currentMonth = LocalDate.now().withDayOfMonth(1)
+        val actualMonths = (5 downTo 0).map { currentMonth.minusMonths(it.toLong()) }.map { monthStart ->
+            val nextMonth = monthStart.plusMonths(1)
+            val total = dayMap.entries
+                .filter { it.key >= monthStart && it.key < nextMonth }
+                .sumOf { it.value.totalSteps }
+            DualSeriesBarPoint(
+                label = monthStart.format(DateTimeFormatter.ofPattern("MMM")),
+                existingValue = total.toFloat(),
+                projectedValue = 0f
+            )
+        }
+        val projectedDays = simulationCoordinator.projectNextDays(config, 120).groupBy {
+            it.date.withDayOfMonth(1)
+        }
+        val projectedMonths = (1..3).map { currentMonth.plusMonths(it.toLong()) }.map { monthStart ->
+            DualSeriesBarPoint(
+                label = monthStart.format(DateTimeFormatter.ofPattern("MMM")),
+                existingValue = 0f,
+                projectedValue = projectedDays[monthStart].orEmpty().sumOf { it.totalSteps }.toFloat()
+            )
+        }
+        return actualMonths + projectedMonths
+    }
+
+    private fun updateStatus(
+        view: View,
+        textView: android.widget.TextView,
+        ok: Boolean,
+        okText: String,
+        badText: String
+    ) {
+        view.backgroundTintList = android.content.res.ColorStateList.valueOf(
+            ContextCompat.getColor(this, if (ok) R.color.status_ok else R.color.status_bad)
         )
-        binding.textProjectionSummary.text = projection.joinToString(separator = "\n") { day ->
-            "${day.date.format(DateTimeFormatter.ofPattern("EEE, MMM d"))}: ${day.totalSteps.formatThousands()} projected steps"
-        }
-    }
-
-    private fun buildConfigFromInputs(): SimulationConfig? {
-        clearValidationErrors()
-
-        val minimumDailySteps = binding.editMinSteps.text?.toString()?.trim()?.toIntOrNull()
-        val maximumDailySteps = binding.editMaxSteps.text?.toString()?.trim()?.toIntOrNull()
-        val backfillDays = binding.editBackfillDays.text?.toString()?.trim()?.toIntOrNull()
-
-        if (minimumDailySteps == null || minimumDailySteps !in 1_000..30_000) {
-            binding.inputMinSteps.error = "Choose a value between 1,000 and 30,000."
-            return null
-        }
-
-        if (maximumDailySteps == null || maximumDailySteps !in 2_000..35_000) {
-            binding.inputMaxSteps.error = "Choose a value between 2,000 and 35,000."
-            return null
-        }
-
-        if (minimumDailySteps >= maximumDailySteps) {
-            binding.inputMaxSteps.error = "Maximum daily steps must be higher than the minimum."
-            return null
-        }
-
-        if (backfillDays == null || backfillDays !in 1..60) {
-            binding.inputBackfillDays.error = "Choose a history window between 1 and 60 days."
-            return null
-        }
-
-        val existing = simulationCoordinator.loadConfig()
-        return existing.copy(
-            minimumDailySteps = minimumDailySteps,
-            maximumDailySteps = maximumDailySteps,
-            backfillDays = backfillDays,
-            automationEnabled = binding.switchAutomation.isChecked
-        )
-    }
-
-    private fun clearValidationErrors() {
-        binding.inputMinSteps.error = null
-        binding.inputMaxSteps.error = null
-        binding.inputBackfillDays.error = null
-    }
-
-    private suspend fun ensureReadyForHealthConnectData(): Boolean {
-        val availability = healthConnectGateway.availability()
-        if (availability != SDK_AVAILABLE) {
-            showSnackbar("Health Connect is not ready yet. Install or update it first.")
-            return false
-        }
-        if (!healthConnectGateway.hasRequiredPermissions()) {
-            showSnackbar("Grant Schrittji step read/write permission in Health Connect first.")
-            return false
-        }
-        return true
-    }
-
-    private fun syncAutomation(config: SimulationConfig) {
-        if (config.automationEnabled) {
-            StepPublishingScheduler.schedule(this)
-        } else {
-            StepPublishingScheduler.cancel(this)
-        }
-    }
-
-    private fun openHealthConnect() {
-        val availability = healthConnectGateway.availability()
-        when (availability) {
-            SDK_AVAILABLE -> {
-                val intent = Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
-                launchIntent(intent)
-            }
-
-            SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
-                val marketIntent = Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("market://details?id=com.google.android.apps.healthdata&url=healthconnect%3A%2F%2Fonboarding")
-                )
-                if (!launchIntent(marketIntent)) {
-                    launchIntent(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
-                        )
-                    )
-                }
-            }
-
-            else -> {
-                showSnackbar("Health Connect is not supported on this device.")
-            }
-        }
-    }
-
-    private fun launchIntent(intent: Intent): Boolean {
-        return try {
-            startActivity(intent)
-            true
-        } catch (_: ActivityNotFoundException) {
-            false
-        }
-    }
-
-    private fun setBusy(isBusy: Boolean) {
-        binding.buttonGrantPermission.isEnabled = !isBusy
-        binding.buttonOpenHealthConnect.isEnabled = !isBusy
-        binding.buttonViewHealthConnectSteps.isEnabled = !isBusy
-        binding.buttonSaveSettings.isEnabled = !isBusy
-        binding.buttonBackfill.isEnabled = !isBusy
-        binding.buttonPublishNow.isEnabled = !isBusy
-        binding.buttonStopAutomation.isEnabled = !isBusy
-    }
-
-    private fun showSnackbar(message: String) {
-        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+        textView.text = if (ok) okText else badText
     }
 }
 
 private fun Long.formatThousands(): String = "%,d".format(this)
+
+private enum class ChartMode {
+    DETAIL,
+    DAILY,
+    WEEKLY,
+    MONTHLY
+}

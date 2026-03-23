@@ -9,10 +9,17 @@ import android.view.View
 import dev.digitaldomi.schrittji.R
 import kotlin.math.max
 
+enum class TimelineSeries {
+    EXISTING,
+    PROJECTED,
+    WORKOUT
+}
+
 data class TimelineBarEntry(
     val startMinute: Int,
     val endMinute: Int,
     val value: Float,
+    val series: TimelineSeries = TimelineSeries.PROJECTED,
     val emphasized: Boolean = false
 )
 
@@ -22,20 +29,33 @@ class DayTimelineChartView @JvmOverloads constructor(
 ) : View(context, attrs) {
     private val density = resources.displayMetrics.density
     private val scaledDensity = density * resources.configuration.fontScale
-    private val primaryColor = context.getColor(R.color.brand_primary)
-    private val emphasizedColor = context.getColor(R.color.brand_primary_dark)
+    private val projectedColor = context.getColor(R.color.chart_projected)
+    private val projectedEmphasizedColor = context.getColor(R.color.brand_primary_dark)
+    private val existingColor = context.getColor(R.color.chart_existing)
+    private val workoutColor = context.getColor(R.color.chart_workout)
     private val textColor = context.getColor(R.color.brand_text)
     private val axisColor = context.getColor(R.color.panel_stroke)
+    private val bucketCount = 24
 
-    private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val projectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = primaryColor
+        color = projectedColor
         alpha = 190
     }
-    private val emphasizedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val projectedEmphasizedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = emphasizedColor
+        color = projectedEmphasizedColor
         alpha = 210
+    }
+    private val existingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = existingColor
+        alpha = 210
+    }
+    private val workoutPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutColor
+        alpha = 220
     }
     private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -54,12 +74,15 @@ class DayTimelineChartView @JvmOverloads constructor(
         alpha = 170
     }
 
-    private var entries: List<TimelineBarEntry> = emptyList()
+    private var buckets: List<TimelineBucket> = emptyList()
     private var maxValue: Float = 1f
 
     fun submitEntries(entries: List<TimelineBarEntry>) {
-        this.entries = entries
-        maxValue = max(1f, entries.maxOfOrNull { it.value } ?: 1f)
+        buckets = buildBuckets(entries)
+        maxValue = max(
+            1f,
+            buckets.maxOfOrNull { max(it.existingValue, it.projectedValue) } ?: 1f
+        )
         invalidate()
     }
 
@@ -85,7 +108,7 @@ class DayTimelineChartView @JvmOverloads constructor(
         canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint)
         canvas.drawText("max ${formatValue(maxValue)}", chartLeft, chartTop - (6f * density), valuePaint)
 
-        if (entries.isEmpty()) {
+        if (buckets.isEmpty()) {
             canvas.drawText(
                 "No entries",
                 width / 2f,
@@ -96,19 +119,68 @@ class DayTimelineChartView @JvmOverloads constructor(
             return
         }
 
-        entries.forEach { entry ->
-            val startFraction = (entry.startMinute.coerceIn(0, 1440)) / 1440f
-            val endFraction = (entry.endMinute.coerceIn(entry.startMinute + 1, 1440)) / 1440f
-            val left = chartLeft + (chartWidth * startFraction)
-            val right = max(left + 1.5f * density, chartLeft + (chartWidth * endFraction))
-            val top = chartBottom - ((entry.value / maxValue) * chartHeight)
-            val rect = RectF(left, top, right, chartBottom)
-            canvas.drawRoundRect(
-                rect,
-                3f * density,
-                3f * density,
-                if (entry.emphasized) emphasizedPaint else barPaint
-            )
+        val slotWidth = chartWidth / buckets.size.toFloat()
+        val groupedWidth = (slotWidth * 0.32f).coerceAtLeast(2.5f * density)
+        val singleWidth = (slotWidth * 0.72f).coerceAtLeast(6f * density)
+
+        buckets.forEachIndexed { index, bucket ->
+            val centerX = chartLeft + (slotWidth * index) + (slotWidth / 2f)
+            val hasExisting = bucket.existingValue > 0f
+            val hasProjected = bucket.projectedValue > 0f
+
+            if (hasExisting && hasProjected) {
+                drawBar(
+                    canvas = canvas,
+                    centerX = centerX - (groupedWidth * 0.7f),
+                    value = bucket.existingValue,
+                    maxValue = maxValue,
+                    chartTop = chartTop,
+                    chartBottom = chartBottom,
+                    barWidth = groupedWidth,
+                    paint = existingPaint
+                )
+                drawBar(
+                    canvas = canvas,
+                    centerX = centerX + (groupedWidth * 0.7f),
+                    value = bucket.projectedValue,
+                    maxValue = maxValue,
+                    chartTop = chartTop,
+                    chartBottom = chartBottom,
+                    barWidth = groupedWidth,
+                    paint = if (bucket.projectedEmphasized) projectedEmphasizedPaint else projectedPaint
+                )
+            } else if (hasExisting) {
+                drawBar(
+                    canvas = canvas,
+                    centerX = centerX,
+                    value = bucket.existingValue,
+                    maxValue = maxValue,
+                    chartTop = chartTop,
+                    chartBottom = chartBottom,
+                    barWidth = singleWidth,
+                    paint = existingPaint
+                )
+            } else if (hasProjected) {
+                drawBar(
+                    canvas = canvas,
+                    centerX = centerX,
+                    value = bucket.projectedValue,
+                    maxValue = maxValue,
+                    chartTop = chartTop,
+                    chartBottom = chartBottom,
+                    barWidth = singleWidth,
+                    paint = if (bucket.projectedEmphasized) projectedEmphasizedPaint else projectedPaint
+                )
+            }
+
+            if (bucket.workoutMarker) {
+                drawWorkoutMarker(
+                    canvas = canvas,
+                    centerX = centerX,
+                    chartTop = chartTop,
+                    barWidth = singleWidth.coerceAtLeast(8f * density)
+                )
+            }
         }
 
         drawHourLabels(canvas, chartLeft, chartRight, chartBottom)
@@ -124,6 +196,26 @@ class DayTimelineChartView @JvmOverloads constructor(
         }
     }
 
+    private fun drawBar(
+        canvas: Canvas,
+        centerX: Float,
+        value: Float,
+        maxValue: Float,
+        chartTop: Float,
+        chartBottom: Float,
+        barWidth: Float,
+        paint: Paint
+    ) {
+        val barHeight = ((value / maxValue) * (chartBottom - chartTop)).coerceAtLeast(6f * density)
+        val rect = RectF(
+            centerX - (barWidth / 2f),
+            chartBottom - barHeight,
+            centerX + (barWidth / 2f),
+            chartBottom
+        )
+        canvas.drawRoundRect(rect, 5f * density, 5f * density, paint)
+    }
+
     private fun formatValue(value: Float): String {
         return if (value >= 1_000f) {
             "${((value / 100f).toInt()) / 10f}k"
@@ -131,4 +223,57 @@ class DayTimelineChartView @JvmOverloads constructor(
             value.toInt().toString()
         }
     }
+
+    private fun drawWorkoutMarker(
+        canvas: Canvas,
+        centerX: Float,
+        chartTop: Float,
+        barWidth: Float
+    ) {
+        val rect = RectF(
+            centerX - (barWidth / 2f),
+            chartTop + (4f * density),
+            centerX + (barWidth / 2f),
+            chartTop + (14f * density)
+        )
+        canvas.drawRoundRect(rect, 5f * density, 5f * density, workoutPaint)
+    }
+
+    private fun buildBuckets(entries: List<TimelineBarEntry>): List<TimelineBucket> {
+        if (entries.isEmpty()) return emptyList()
+
+        val bucketMinutes = 1440 / bucketCount
+        val buckets = MutableList(bucketCount) { TimelineBucket() }
+
+        entries.forEach { entry ->
+            val start = entry.startMinute.coerceIn(0, 1439)
+            val endExclusive = entry.endMinute.coerceIn(start + 1, 1440)
+            var minute = start
+            while (minute < endExclusive) {
+                val bucketIndex = (minute / bucketMinutes).coerceIn(0, bucketCount - 1)
+                val bucketEnd = ((bucketIndex + 1) * bucketMinutes).coerceAtMost(endExclusive)
+                val overlapMinutes = (bucketEnd - minute).coerceAtLeast(1)
+                val portion = entry.value * (overlapMinutes / (endExclusive - start).toFloat())
+                val current = buckets[bucketIndex]
+                when (entry.series) {
+                    TimelineSeries.EXISTING -> current.existingValue += portion
+                    TimelineSeries.PROJECTED -> {
+                        current.projectedValue += portion
+                        current.projectedEmphasized = current.projectedEmphasized || entry.emphasized
+                    }
+                    TimelineSeries.WORKOUT -> current.workoutMarker = true
+                }
+                minute = bucketEnd
+            }
+        }
+
+        return buckets
+    }
 }
+
+private data class TimelineBucket(
+    var existingValue: Float = 0f,
+    var projectedValue: Float = 0f,
+    var projectedEmphasized: Boolean = false,
+    var workoutMarker: Boolean = false
+)

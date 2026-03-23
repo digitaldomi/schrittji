@@ -9,6 +9,14 @@ data class SimulationConfig(
     val maximumDailySteps: Int = 22_000,
     val backfillDays: Int = 14,
     val automationEnabled: Boolean = false,
+    val runningMinSessionsPerWeek: Int = 1,
+    val runningMaxSessionsPerWeek: Int = 2,
+    val runningMinDurationMinutes: Int = 26,
+    val runningMaxDurationMinutes: Int = 48,
+    val cyclingMinSessionsPerWeek: Int = 0,
+    val cyclingMaxSessionsPerWeek: Int = 1,
+    val cyclingMinDurationMinutes: Int = 40,
+    val cyclingMaxDurationMinutes: Int = 95,
     val randomSeed: Long = 0L,
     val lastPublishedEpochMilli: Long? = null,
     val lastSummary: String = "No Health Connect data has been written yet.",
@@ -26,6 +34,14 @@ class SimulationConfigStore(context: Context) {
             maximumDailySteps = preferences.getInt(KEY_MAXIMUM_DAILY_STEPS, 22_000),
             backfillDays = preferences.getInt(KEY_BACKFILL_DAYS, 14),
             automationEnabled = preferences.getBoolean(KEY_AUTOMATION_ENABLED, false),
+            runningMinSessionsPerWeek = preferences.getInt(KEY_RUNNING_MIN_SESSIONS, 1),
+            runningMaxSessionsPerWeek = preferences.getInt(KEY_RUNNING_MAX_SESSIONS, 2),
+            runningMinDurationMinutes = preferences.getInt(KEY_RUNNING_MIN_DURATION, 26),
+            runningMaxDurationMinutes = preferences.getInt(KEY_RUNNING_MAX_DURATION, 48),
+            cyclingMinSessionsPerWeek = preferences.getInt(KEY_CYCLING_MIN_SESSIONS, 0),
+            cyclingMaxSessionsPerWeek = preferences.getInt(KEY_CYCLING_MAX_SESSIONS, 1),
+            cyclingMinDurationMinutes = preferences.getInt(KEY_CYCLING_MIN_DURATION, 40),
+            cyclingMaxDurationMinutes = preferences.getInt(KEY_CYCLING_MAX_DURATION, 95),
             randomSeed = preferences.getLong(KEY_RANDOM_SEED, 0L),
             lastPublishedEpochMilli = rawLastPublished.takeUnless { it == Long.MIN_VALUE },
             lastSummary = preferences.getString(
@@ -46,6 +62,14 @@ class SimulationConfigStore(context: Context) {
             .putInt(KEY_MAXIMUM_DAILY_STEPS, config.maximumDailySteps)
             .putInt(KEY_BACKFILL_DAYS, config.backfillDays)
             .putBoolean(KEY_AUTOMATION_ENABLED, config.automationEnabled)
+            .putInt(KEY_RUNNING_MIN_SESSIONS, config.runningMinSessionsPerWeek)
+            .putInt(KEY_RUNNING_MAX_SESSIONS, config.runningMaxSessionsPerWeek)
+            .putInt(KEY_RUNNING_MIN_DURATION, config.runningMinDurationMinutes)
+            .putInt(KEY_RUNNING_MAX_DURATION, config.runningMaxDurationMinutes)
+            .putInt(KEY_CYCLING_MIN_SESSIONS, config.cyclingMinSessionsPerWeek)
+            .putInt(KEY_CYCLING_MAX_SESSIONS, config.cyclingMaxSessionsPerWeek)
+            .putInt(KEY_CYCLING_MIN_DURATION, config.cyclingMinDurationMinutes)
+            .putInt(KEY_CYCLING_MAX_DURATION, config.cyclingMaxDurationMinutes)
             .putLong(KEY_RANDOM_SEED, stableSeed)
             .putString(KEY_LAST_SUMMARY, config.lastSummary)
             .putString(KEY_LAST_GENERATED_DETAILS, config.lastGeneratedDetails)
@@ -90,6 +114,14 @@ class SimulationConfigStore(context: Context) {
         private const val KEY_MAXIMUM_DAILY_STEPS = "maximum_daily_steps"
         private const val KEY_BACKFILL_DAYS = "backfill_days"
         private const val KEY_AUTOMATION_ENABLED = "automation_enabled"
+        private const val KEY_RUNNING_MIN_SESSIONS = "running_min_sessions"
+        private const val KEY_RUNNING_MAX_SESSIONS = "running_max_sessions"
+        private const val KEY_RUNNING_MIN_DURATION = "running_min_duration"
+        private const val KEY_RUNNING_MAX_DURATION = "running_max_duration"
+        private const val KEY_CYCLING_MIN_SESSIONS = "cycling_min_sessions"
+        private const val KEY_CYCLING_MAX_SESSIONS = "cycling_max_sessions"
+        private const val KEY_CYCLING_MIN_DURATION = "cycling_min_duration"
+        private const val KEY_CYCLING_MAX_DURATION = "cycling_max_duration"
         private const val KEY_RANDOM_SEED = "random_seed"
         private const val KEY_LAST_PUBLISHED = "last_published"
         private const val KEY_LAST_SUMMARY = "last_summary"

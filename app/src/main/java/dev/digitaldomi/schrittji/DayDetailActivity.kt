@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
+import dev.digitaldomi.schrittji.chart.TimelineSeries
 import dev.digitaldomi.schrittji.chart.TimelineBarEntry
 import dev.digitaldomi.schrittji.databinding.ActivityDayDetailBinding
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
@@ -75,7 +76,7 @@ class DayDetailActivity : AppCompatActivity() {
                         simulationCoordinator.projectDayDetail(
                             simulationCoordinator.loadConfig(),
                             selectedDate
-                        ).slices
+                        )
                     )
                 }
             } catch (exception: Exception) {
@@ -109,13 +110,15 @@ class DayDetailActivity : AppCompatActivity() {
                     startMinute = entry.start.hour * 60 + entry.start.minute,
                     endMinute = entry.end.hour * 60 + entry.end.minute,
                     value = entry.count.toFloat(),
+                    series = TimelineSeries.EXISTING,
                     emphasized = entry.isFromSchrittji
                 )
             }
         )
     }
 
-    private fun renderProjectionDay(slices: List<MinuteStepSlice>) {
+    private fun renderProjectionDay(detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail) {
+        val slices = detail.slices
         val totalSteps = slices.sumOf { it.count }
         binding.textSummary.text = buildString {
             appendLine("Source: Schrittji projection")
@@ -135,6 +138,15 @@ class DayDetailActivity : AppCompatActivity() {
                     startMinute = slice.start.hour * 60 + slice.start.minute,
                     endMinute = slice.end.hour * 60 + slice.end.minute,
                     value = slice.count.toFloat(),
+                    series = TimelineSeries.PROJECTED,
+                    emphasized = false
+                )
+            } + detail.workouts.map { workout ->
+                TimelineBarEntry(
+                    startMinute = workout.start.hour * 60 + workout.start.minute,
+                    endMinute = workout.end.hour * 60 + workout.end.minute,
+                    value = 1f,
+                    series = TimelineSeries.WORKOUT,
                     emphasized = false
                 )
             }
