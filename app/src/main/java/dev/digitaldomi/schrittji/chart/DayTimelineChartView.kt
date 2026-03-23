@@ -33,7 +33,7 @@ class DayTimelineChartView @JvmOverloads constructor(
     private val existingColor = context.getColor(R.color.chart_existing)
     private val textColor = context.getColor(R.color.brand_text)
     private val axisColor = context.getColor(R.color.panel_stroke)
-    private val bucketCount = 48
+    private val bucketCount = 24
 
     private val projectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -113,8 +113,8 @@ class DayTimelineChartView @JvmOverloads constructor(
         }
 
         val slotWidth = chartWidth / buckets.size.toFloat()
-        val groupedWidth = (slotWidth * 0.68f).coerceAtLeast(3f * density)
-        val singleWidth = (slotWidth * 0.78f).coerceAtLeast(4f * density)
+        val groupedWidth = (slotWidth * 0.32f).coerceAtLeast(2.5f * density)
+        val singleWidth = (slotWidth * 0.72f).coerceAtLeast(6f * density)
 
         buckets.forEachIndexed { index, bucket ->
             val centerX = chartLeft + (slotWidth * index) + (slotWidth / 2f)
@@ -124,7 +124,7 @@ class DayTimelineChartView @JvmOverloads constructor(
             if (hasExisting && hasProjected) {
                 drawBar(
                     canvas = canvas,
-                    centerX = centerX - (groupedWidth * 0.42f),
+                    centerX = centerX - (groupedWidth * 0.7f),
                     value = bucket.existingValue,
                     maxValue = maxValue,
                     chartTop = chartTop,
@@ -134,7 +134,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                 )
                 drawBar(
                     canvas = canvas,
-                    centerX = centerX + (groupedWidth * 0.42f),
+                    centerX = centerX + (groupedWidth * 0.7f),
                     value = bucket.projectedValue,
                     maxValue = maxValue,
                     chartTop = chartTop,
@@ -190,7 +190,7 @@ class DayTimelineChartView @JvmOverloads constructor(
         barWidth: Float,
         paint: Paint
     ) {
-        val barHeight = ((value / maxValue) * (chartBottom - chartTop)).coerceAtLeast(2f * density)
+        val barHeight = ((value / maxValue) * (chartBottom - chartTop)).coerceAtLeast(6f * density)
         val rect = RectF(
             centerX - (barWidth / 2f),
             chartBottom - barHeight,
