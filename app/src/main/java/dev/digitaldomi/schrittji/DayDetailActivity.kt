@@ -76,7 +76,7 @@ class DayDetailActivity : AppCompatActivity() {
                         simulationCoordinator.projectDayDetail(
                             simulationCoordinator.loadConfig(),
                             selectedDate
-                        ).slices
+                        )
                     )
                 }
             } catch (exception: Exception) {
@@ -117,7 +117,8 @@ class DayDetailActivity : AppCompatActivity() {
         )
     }
 
-    private fun renderProjectionDay(slices: List<MinuteStepSlice>) {
+    private fun renderProjectionDay(detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail) {
+        val slices = detail.slices
         val totalSteps = slices.sumOf { it.count }
         binding.textSummary.text = buildString {
             appendLine("Source: Schrittji projection")
@@ -138,6 +139,14 @@ class DayDetailActivity : AppCompatActivity() {
                     endMinute = slice.end.hour * 60 + slice.end.minute,
                     value = slice.count.toFloat(),
                     series = TimelineSeries.PROJECTED,
+                    emphasized = false
+                )
+            } + detail.workouts.map { workout ->
+                TimelineBarEntry(
+                    startMinute = workout.start.hour * 60 + workout.start.minute,
+                    endMinute = workout.end.hour * 60 + workout.end.minute,
+                    value = 1f,
+                    series = TimelineSeries.WORKOUT,
                     emphasized = false
                 )
             }

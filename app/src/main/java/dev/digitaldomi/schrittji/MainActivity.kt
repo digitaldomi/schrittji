@@ -11,6 +11,7 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILA
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import dev.digitaldomi.schrittji.chart.DualSeriesBarPoint
+import dev.digitaldomi.schrittji.chart.TimelineSeries
 import dev.digitaldomi.schrittji.chart.TimelineBarEntry
 import dev.digitaldomi.schrittji.databinding.ActivityMainBinding
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
@@ -150,7 +151,6 @@ class MainActivity : AppCompatActivity() {
         binding.panelLegend.visibility = View.VISIBLE
         binding.panelDetailContent.visibility = View.GONE
         binding.panelOverviewContent.visibility = View.VISIBLE
-        binding.textProjectionDescription.text = getString(R.string.projection_description)
         val points = when (chartMode) {
             ChartMode.DAILY -> buildDailyOverview(config)
             ChartMode.WEEKLY -> buildWeeklyOverview(config)
@@ -175,7 +175,6 @@ class MainActivity : AppCompatActivity() {
         binding.panelLegend.visibility = View.VISIBLE
         binding.panelDetailContent.visibility = View.VISIBLE
         binding.panelOverviewContent.visibility = View.GONE
-        binding.textProjectionDescription.text = "Existing Health Connect entries and projected Schrittji entries across one day."
         binding.textSelectedProjectionDate.text =
             selectedProjectionDate.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
         binding.buttonTodayProjectionDay.isEnabled = selectedProjectionDate != LocalDate.now()
@@ -190,7 +189,7 @@ class MainActivity : AppCompatActivity() {
                     startMinute = entry.start.hour * 60 + entry.start.minute,
                     endMinute = entry.end.hour * 60 + entry.end.minute,
                     value = entry.count.toFloat(),
-                    series = dev.digitaldomi.schrittji.chart.TimelineSeries.EXISTING,
+                    series = TimelineSeries.EXISTING,
                     emphasized = false
                 )
             } + detail.slices.map { slice ->
@@ -198,7 +197,15 @@ class MainActivity : AppCompatActivity() {
                     startMinute = slice.start.hour * 60 + slice.start.minute,
                     endMinute = slice.end.hour * 60 + slice.end.minute,
                     value = slice.count.toFloat(),
-                    series = dev.digitaldomi.schrittji.chart.TimelineSeries.PROJECTED,
+                    series = TimelineSeries.PROJECTED,
+                    emphasized = false
+                )
+            } + detail.workouts.map { workout ->
+                TimelineBarEntry(
+                    startMinute = workout.start.hour * 60 + workout.start.minute,
+                    endMinute = workout.end.hour * 60 + workout.end.minute,
+                    value = 1f,
+                    series = TimelineSeries.WORKOUT,
                     emphasized = false
                 )
             }

@@ -152,7 +152,7 @@
                 android:id="@+id/panelLegend"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+        android:layout_marginTop="10dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -184,31 +184,28 @@
                     android:text="@string/legend_projected"
                     android:textColor="@color/brand_text"
                     android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+        <View
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginStart="16dp"
+            android:background="@drawable/status_dot"
+            android:backgroundTint="@color/chart_workout" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/legend_workout"
+            android:textColor="@color/brand_text"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
             </LinearLayout>
-
-            <TextView
-                android:id="@+id/textProjectionHeader"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="@string/projection_header"
-                android:textColor="@color/brand_text"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
-
-            <TextView
-                android:id="@+id/textProjectionDescription"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/projection_description"
-                android:textColor="@color/brand_text"
-                android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
 
             <FrameLayout
                 android:id="@+id/panelChartContent"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp">
+                android:layout_marginTop="10dp">
 
                 <LinearLayout
                     android:id="@+id/panelDetailContent"

@@ -11,7 +11,8 @@ import kotlin.math.max
 
 enum class TimelineSeries {
     EXISTING,
-    PROJECTED
+    PROJECTED,
+    WORKOUT
 }
 
 data class TimelineBarEntry(
@@ -31,6 +32,7 @@ class DayTimelineChartView @JvmOverloads constructor(
     private val projectedColor = context.getColor(R.color.chart_projected)
     private val projectedEmphasizedColor = context.getColor(R.color.brand_primary_dark)
     private val existingColor = context.getColor(R.color.chart_existing)
+    private val workoutColor = context.getColor(R.color.chart_workout)
     private val textColor = context.getColor(R.color.brand_text)
     private val axisColor = context.getColor(R.color.panel_stroke)
     private val bucketCount = 24
@@ -49,6 +51,11 @@ class DayTimelineChartView @JvmOverloads constructor(
         style = Paint.Style.FILL
         color = existingColor
         alpha = 210
+    }
+    private val workoutPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutColor
+        alpha = 220
     }
     private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -165,6 +172,15 @@ class DayTimelineChartView @JvmOverloads constructor(
                     paint = if (bucket.projectedEmphasized) projectedEmphasizedPaint else projectedPaint
                 )
             }
+
+            if (bucket.workoutMarker) {
+                drawWorkoutMarker(
+                    canvas = canvas,
+                    centerX = centerX,
+                    chartTop = chartTop,
+                    barWidth = singleWidth.coerceAtLeast(8f * density)
+                )
+            }
         }
 
         drawHourLabels(canvas, chartLeft, chartRight, chartBottom)
@@ -208,6 +224,21 @@ class DayTimelineChartView @JvmOverloads constructor(
         }
     }
 
+    private fun drawWorkoutMarker(
+        canvas: Canvas,
+        centerX: Float,
+        chartTop: Float,
+        barWidth: Float
+    ) {
+        val rect = RectF(
+            centerX - (barWidth / 2f),
+            chartTop + (4f * density),
+            centerX + (barWidth / 2f),
+            chartTop + (14f * density)
+        )
+        canvas.drawRoundRect(rect, 5f * density, 5f * density, workoutPaint)
+    }
+
     private fun buildBuckets(entries: List<TimelineBarEntry>): List<TimelineBucket> {
         if (entries.isEmpty()) return emptyList()
 
@@ -230,6 +261,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                         current.projectedValue += portion
                         current.projectedEmphasized = current.projectedEmphasized || entry.emphasized
                     }
+                    TimelineSeries.WORKOUT -> current.workoutMarker = true
                 }
                 minute = bucketEnd
             }
@@ -242,5 +274,6 @@ class DayTimelineChartView @JvmOverloads constructor(
 private data class TimelineBucket(
     var existingValue: Float = 0f,
     var projectedValue: Float = 0f,
-    var projectedEmphasized: Boolean = false
+    var projectedEmphasized: Boolean = false,
+    var workoutMarker: Boolean = false
 )

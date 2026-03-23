@@ -15,6 +15,7 @@
     <string name="chart_monthly">Monthly</string>
     <string name="legend_existing">Existing Health Connect data</string>
     <string name="legend_projected">Projected Schrittji data</string>
+    <string name="legend_workout">Workouts</string>
     <string name="setup_health_connect">Health Connect</string>
     <string name="setup_permissions">Permissions</string>
     <string name="setup_updates">Step updates</string>

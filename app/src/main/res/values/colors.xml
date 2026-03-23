@@ -8,6 +8,7 @@
     <color name="surface_background">#F3F8F5</color>
     <color name="chart_existing">#2C8E73</color>
     <color name="chart_projected">#4465D9</color>
+    <color name="chart_workout">#D96B2B</color>
     <color name="status_ok">#2E9F61</color>
     <color name="status_bad">#D54848</color>
 </resources>
