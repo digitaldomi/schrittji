@@ -180,6 +180,26 @@ class DayTimelineChartView @JvmOverloads constructor(
         }
     }
 
+    private fun drawBar(
+        canvas: Canvas,
+        centerX: Float,
+        value: Float,
+        maxValue: Float,
+        chartTop: Float,
+        chartBottom: Float,
+        barWidth: Float,
+        paint: Paint
+    ) {
+        val barHeight = ((value / maxValue) * (chartBottom - chartTop)).coerceAtLeast(2f * density)
+        val rect = RectF(
+            centerX - (barWidth / 2f),
+            chartBottom - barHeight,
+            centerX + (barWidth / 2f),
+            chartBottom
+        )
+        canvas.drawRoundRect(rect, 5f * density, 5f * density, paint)
+    }
+
     private fun formatValue(value: Float): String {
         return if (value >= 1_000f) {
             "${((value / 100f).toInt()) / 10f}k"
