@@ -22,6 +22,31 @@ data class DailyProjectedSteps(
     val totalSteps: Long
 )
 
+enum class WorkoutType {
+    RUNNING,
+    CYCLING
+}
+
+data class WorkoutPlan(
+    val type: WorkoutType,
+    val start: ZonedDateTime,
+    val end: ZonedDateTime,
+    val title: String,
+    val notes: String,
+    val distanceMeters: Double,
+    val kilocalories: Double
+)
+
+data class GeneratedWindowData(
+    val stepSlices: List<MinuteStepSlice>,
+    val workouts: List<WorkoutPlan>
+)
+
+private data class GeneratedDayData(
+    val stepSlices: List<MinuteStepSlice>,
+    val workouts: List<WorkoutPlan>
+)
+
 private data class WindowPlan(
     val start: ZonedDateTime,
     val end: ZonedDateTime,
@@ -34,11 +59,11 @@ private data class WindowPlan(
 
 private data class WeeklyRoutine(
     val lunchOutDays: Set<DayOfWeek>,
-    val runDays: Set<DayOfWeek>,
+    val runningDays: Set<DayOfWeek>,
+    val cyclingDays: Set<DayOfWeek>,
     val errandDays: Set<DayOfWeek>,
     val weekendEarlyRiserDays: Set<DayOfWeek>,
     val weekendLongOutingDay: DayOfWeek,
-    val weekendRunDay: DayOfWeek?,
     val lighterFriday: Boolean
 )
 
@@ -48,24 +73,40 @@ class StepSimulationEngine {
         endExclusive: ZonedDateTime,
         config: SimulationConfig
     ): List<MinuteStepSlice> {
+        return generateWindowData(startInclusive, endExclusive, config).stepSlices
+    }
+
+    fun generateWindowData(
+        startInclusive: ZonedDateTime,
+        endExclusive: ZonedDateTime,
+        config: SimulationConfig
+    ): GeneratedWindowData {
         if (!startInclusive.isBefore(endExclusive)) {
-            return emptyList()
+            return GeneratedWindowData(emptyList(), emptyList())
         }
 
         val zone = startInclusive.zone
         val startDate = startInclusive.toLocalDate()
         val endDate = endExclusive.minusNanos(1).withZoneSameInstant(zone).toLocalDate()
         val slices = mutableListOf<MinuteStepSlice>()
+        val workouts = mutableListOf<WorkoutPlan>()
 
         var date = startDate
         while (!date.isAfter(endDate)) {
-            slices += generateDay(date, zone, config).filter { slice ->
+            val generatedDay = generateDayData(date, zone, config)
+            slices += generatedDay.stepSlices.filter { slice ->
                 slice.end.isAfter(startInclusive) && slice.start.isBefore(endExclusive)
+            }
+            workouts += generatedDay.workouts.filter { workout ->
+                workout.end.isAfter(startInclusive) && workout.start.isBefore(endExclusive)
             }
             date = date.plusDays(1)
         }
 
-        return slices.sortedBy { it.start.toInstant() }
+        return GeneratedWindowData(
+            stepSlices = slices.sortedBy { it.start.toInstant() },
+            workouts = workouts.sortedBy { it.start.toInstant() }
+        )
     }
 
     fun projectNextDays(
@@ -78,16 +119,16 @@ class StepSimulationEngine {
             val date = startDate.plusDays(dayOffset.toLong())
             DailyProjectedSteps(
                 date = date,
-                totalSteps = generateDay(date, zoneId, config).sumOf { it.count }
+                totalSteps = generateDayData(date, zoneId, config).stepSlices.sumOf { it.count }
             )
         }
     }
 
-    private fun generateDay(
+    private fun generateDayData(
         date: LocalDate,
         zoneId: ZoneId,
         config: SimulationConfig
-    ): List<MinuteStepSlice> {
+    ): GeneratedDayData {
         val daySeed = config.randomSeed xor (date.toEpochDay() * -7046029254386353131L)
         val random = Random(daySeed)
         val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
@@ -95,8 +136,9 @@ class StepSimulationEngine {
         val targetSteps = computeTargetSteps(date, config, random, isWeekend, weeklyRoutine)
         val wakeTime = buildWakeTime(date, zoneId, random, isWeekend, weeklyRoutine)
         val sleepTime = buildSleepTime(date, zoneId, random, isWeekend)
+        val workouts = generateWorkoutPlans(date, random, isWeekend, wakeTime, sleepTime, weeklyRoutine, config)
         val minuteCounts = linkedMapOf<ZonedDateTime, Int>()
-        val windows = buildWindows(date, zoneId, wakeTime, sleepTime, random, isWeekend, weeklyRoutine)
+        val windows = buildWindows(date, zoneId, wakeTime, sleepTime, random, isWeekend, weeklyRoutine, workouts)
 
         val weightTotal = windows.sumOf { it.shareWeight }.takeIf { it > 0.0 } ?: 1.0
         windows.forEach { window ->
@@ -107,15 +149,18 @@ class StepSimulationEngine {
         addAmbientMovement(minuteCounts, wakeTime, sleepTime, targetSteps, random)
         rebalanceToTarget(minuteCounts, wakeTime, sleepTime, targetSteps, random)
 
-        return minuteCounts.entries
-            .sortedBy { it.key.toInstant() }
-            .map { (start, count) ->
-                MinuteStepSlice(
-                    start = start,
-                    end = start.plusMinutes(1),
-                    count = count.toLong()
-                )
-            }
+        return GeneratedDayData(
+            stepSlices = minuteCounts.entries
+                .sortedBy { it.key.toInstant() }
+                .map { (start, count) ->
+                    MinuteStepSlice(
+                        start = start,
+                        end = start.plusMinutes(1),
+                        count = count.toLong()
+                    )
+                },
+            workouts = workouts
+        )
     }
 
     private fun computeTargetSteps(
@@ -134,8 +179,7 @@ class StepSimulationEngine {
         }
 
         val runBonus = when {
-            !isWeekend && date.dayOfWeek in weeklyRoutine.runDays -> 2_400 + random.nextInt(300, 1_200)
-            isWeekend && weeklyRoutine.weekendRunDay == date.dayOfWeek -> 1_100 + random.nextInt(200, 800)
+            date.dayOfWeek in weeklyRoutine.runningDays -> 2_200 + random.nextInt(250, 1_250)
             else -> 0
         }
         val outingBonus = when {
@@ -148,11 +192,16 @@ class StepSimulationEngine {
         } else {
             0
         }
+        val cyclingAdjacencyBonus = if (date.dayOfWeek in weeklyRoutine.cyclingDays) {
+            120 + random.nextInt(0, 280)
+        } else {
+            0
+        }
         val lightFridayPenalty = if (
             date.dayOfWeek == DayOfWeek.FRIDAY &&
             weeklyRoutine.lighterFriday &&
             !isWeekend &&
-            date.dayOfWeek !in weeklyRoutine.runDays
+            date.dayOfWeek !in weeklyRoutine.runningDays
         ) {
             900 + random.nextInt(0, 450)
         } else {
@@ -160,7 +209,8 @@ class StepSimulationEngine {
         }
         val longerWave = 1.0 + (sin(date.toEpochDay() / 6.3 * PI / 2.0) * 0.06)
         val blendedRandom = (random.nextDouble() + random.nextDouble() + random.nextDouble()) / 3.0
-        val dayTarget = (base + runBonus + outingBonus + errandBonus - lightFridayPenalty)
+        val microVariance = random.nextInt(-190, 311)
+        val dayTarget = (base + runBonus + outingBonus + errandBonus + cyclingAdjacencyBonus + microVariance - lightFridayPenalty)
             .coerceAtLeast(if (isWeekend) 5_200 else 6_200)
         return (dayTarget * longerWave * (0.94 + blendedRandom * 0.12)).roundToInt()
             .coerceIn(minSteps, maxSteps)
@@ -200,7 +250,8 @@ class StepSimulationEngine {
         sleepTime: ZonedDateTime,
         random: Random,
         isWeekend: Boolean,
-        weeklyRoutine: WeeklyRoutine
+        weeklyRoutine: WeeklyRoutine,
+        workouts: List<WorkoutPlan>
     ): List<WindowPlan> {
         val windows = mutableListOf<WindowPlan>()
 
@@ -251,19 +302,6 @@ class StepSimulationEngine {
                     maxPace = 96,
                     pauseChance = 0.18,
                     continuity = 0.85
-                )
-            }
-            if (weeklyRoutine.weekendRunDay == date.dayOfWeek) {
-                addWindow(
-                    windows,
-                    atTime(date, zoneId, 9, 4, random, 40),
-                    random.nextInt(22, 46),
-                    0.22,
-                    94,
-                    130,
-                    0.08,
-                    0.92,
-                    sleepTime
                 )
             }
         } else {
@@ -349,19 +387,7 @@ class StepSimulationEngine {
                     )
                 }
             }
-            if (date.dayOfWeek in weeklyRoutine.runDays) {
-                addWindow(
-                    windows,
-                    atTime(date, zoneId, 19, 14, random, 24),
-                    random.nextInt(24, 44),
-                    0.22,
-                    96,
-                    132,
-                    0.08,
-                    0.92,
-                    sleepTime
-                )
-            } else {
+            if (date.dayOfWeek !in weeklyRoutine.runningDays) {
                 maybeAddWindow(windows, random, 0.42) {
                     WindowPlan(
                         start = atTime(date, zoneId, 20, 6, random, 24),
@@ -371,6 +397,47 @@ class StepSimulationEngine {
                         maxPace = 82,
                         pauseChance = 0.22,
                         continuity = 0.82
+                    )
+                }
+            }
+        }
+
+        workouts.forEach { workout ->
+            when (workout.type) {
+                WorkoutType.RUNNING -> addWindow(
+                    windows = windows,
+                    start = workout.start,
+                    durationMinutes = ChronoUnit.MINUTES.between(workout.start, workout.end).toInt().coerceAtLeast(12),
+                    shareWeight = if (isWeekend) 0.2 else 0.23,
+                    minPace = 96,
+                    maxPace = 136,
+                    pauseChance = 0.08,
+                    continuity = 0.93,
+                    sleepTime = sleepTime
+                )
+
+                WorkoutType.CYCLING -> {
+                    addWindow(
+                        windows = windows,
+                        start = workout.start.minusMinutes(8),
+                        durationMinutes = 6,
+                        shareWeight = 0.018,
+                        minPace = 34,
+                        maxPace = 56,
+                        pauseChance = 0.26,
+                        continuity = 0.82,
+                        sleepTime = sleepTime
+                    )
+                    addWindow(
+                        windows = windows,
+                        start = workout.end.plusMinutes(3),
+                        durationMinutes = 5,
+                        shareWeight = 0.015,
+                        minPace = 32,
+                        maxPace = 52,
+                        pauseChance = 0.28,
+                        continuity = 0.8,
+                        sleepTime = sleepTime
                     )
                 }
             }
@@ -617,16 +684,98 @@ class StepSimulationEngine {
         return if (this.isAfter(other)) other else this
     }
 
+    private fun generateWorkoutPlans(
+        date: LocalDate,
+        random: Random,
+        isWeekend: Boolean,
+        wakeTime: ZonedDateTime,
+        sleepTime: ZonedDateTime,
+        weeklyRoutine: WeeklyRoutine,
+        config: SimulationConfig
+    ): List<WorkoutPlan> {
+        val workouts = mutableListOf<WorkoutPlan>()
+
+        if (date.dayOfWeek in weeklyRoutine.runningDays) {
+            val duration = randomDuration(
+                config.runningMinDurationMinutes,
+                config.runningMaxDurationMinutes,
+                18,
+                90,
+                random
+            )
+            val start = (if (isWeekend) {
+                wakeTime.plusMinutes(random.nextInt(55, 120).toLong())
+            } else {
+                date.atStartOfDay(wakeTime.zone).plusHours(19).plusMinutes(6)
+                    .plusMinutes(random.nextInt(-24, 28).toLong())
+            }).coerceAfter(wakeTime.plusMinutes(25)).coerceBefore(sleepTime.minusMinutes(duration.toLong() + 20))
+            val end = start.plusMinutes(duration.toLong())
+            val paceMetersPerMinute = random.nextDouble(155.0, 205.0)
+            workouts += WorkoutPlan(
+                type = WorkoutType.RUNNING,
+                start = start,
+                end = end,
+                title = if (isWeekend) "Weekend run" else "Evening run",
+                notes = "Synthetic outdoor run generated by Schrittji's weekly routine.",
+                distanceMeters = duration * paceMetersPerMinute,
+                kilocalories = duration * random.nextDouble(10.5, 14.5)
+            )
+        }
+
+        if (date.dayOfWeek in weeklyRoutine.cyclingDays) {
+            val duration = randomDuration(
+                config.cyclingMinDurationMinutes,
+                config.cyclingMaxDurationMinutes,
+                20,
+                180,
+                random
+            )
+            val start = (if (isWeekend) {
+                wakeTime.plusMinutes(random.nextInt(95, 180).toLong())
+            } else {
+                date.atStartOfDay(wakeTime.zone).plusHours(18).plusMinutes(18)
+                    .plusMinutes(random.nextInt(-26, 34).toLong())
+            }).coerceAfter(wakeTime.plusMinutes(35)).coerceBefore(sleepTime.minusMinutes(duration.toLong() + 25))
+            val end = start.plusMinutes(duration.toLong())
+            val distanceMetersPerMinute = random.nextDouble(260.0, 420.0)
+            workouts += WorkoutPlan(
+                type = WorkoutType.CYCLING,
+                start = start,
+                end = end,
+                title = if (isWeekend) "Weekend ride" else "After-work ride",
+                notes = "Synthetic cycling workout generated by Schrittji's weekly routine.",
+                distanceMeters = duration * distanceMetersPerMinute,
+                kilocalories = duration * random.nextDouble(7.0, 11.5)
+            )
+        }
+
+        return workouts.filter { it.start.isBefore(it.end) }
+    }
+
     private fun buildWeeklyRoutine(date: LocalDate, config: SimulationConfig): WeeklyRoutine {
         val monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val weekSeed = config.randomSeed xor (monday.toEpochDay() * -7046029254386353131L)
         val random = Random(weekSeed)
         val weekdayCandidates = listOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
-        val runPool = listOf(DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+        val runningPool = listOf(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY, DayOfWeek.WEDNESDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.FRIDAY)
+        val cyclingPool = listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)
 
         val lunchOutDays = weekdayCandidates.shuffled(random).take(random.nextInt(2, 4)).toSet()
-        val runDays = runPool.shuffled(random).take(random.nextInt(1, 3)).toSet()
         val errandDays = weekdayCandidates.shuffled(random).take(random.nextInt(1, 3)).toSet()
+        val runningSessionCount = randomSessionCount(
+            config.runningMinSessionsPerWeek,
+            config.runningMaxSessionsPerWeek,
+            runningPool.size,
+            random
+        )
+        val cyclingSessionCount = randomSessionCount(
+            config.cyclingMinSessionsPerWeek,
+            config.cyclingMaxSessionsPerWeek,
+            cyclingPool.size,
+            random
+        )
+        val runningDays = runningPool.shuffled(random).take(runningSessionCount).toSet()
+        val cyclingDays = cyclingPool.shuffled(random).take(cyclingSessionCount).toSet()
         val weekendEarlyRisers = buildSet {
             if (random.nextDouble() < 0.3) add(DayOfWeek.SATURDAY)
             if (random.nextDouble() < 0.2) add(DayOfWeek.SUNDAY)
@@ -634,16 +783,28 @@ class StepSimulationEngine {
 
         return WeeklyRoutine(
             lunchOutDays = lunchOutDays,
-            runDays = runDays,
+            runningDays = runningDays,
+            cyclingDays = cyclingDays,
             errandDays = errandDays,
             weekendEarlyRiserDays = weekendEarlyRisers,
             weekendLongOutingDay = if (random.nextBoolean()) DayOfWeek.SATURDAY else DayOfWeek.SUNDAY,
-            weekendRunDay = if (random.nextDouble() < 0.38) {
-                if (random.nextBoolean()) DayOfWeek.SATURDAY else DayOfWeek.SUNDAY
-            } else {
-                null
-            },
             lighterFriday = random.nextDouble() < 0.42
         )
+    }
+
+    private fun randomSessionCount(min: Int, max: Int, hardMax: Int, random: Random): Int {
+        val safeMin = min.coerceIn(0, hardMax)
+        val safeMax = max.coerceIn(safeMin, hardMax)
+        return if (safeMax == safeMin) safeMin else random.nextInt(safeMin, safeMax + 1)
+    }
+
+    private fun randomDuration(min: Int, max: Int, fallbackMin: Int, fallbackMax: Int, random: Random): Int {
+        val safeMin = min.coerceAtLeast(fallbackMin)
+        val safeMax = max.coerceAtLeast(safeMin).coerceAtMost(fallbackMax)
+        return if (safeMax == safeMin) safeMin else random.nextInt(safeMin, safeMax + 1)
+    }
+
+    private fun ZonedDateTime.coerceAfter(other: ZonedDateTime): ZonedDateTime {
+        return if (this.isBefore(other)) other else this
     }
 }

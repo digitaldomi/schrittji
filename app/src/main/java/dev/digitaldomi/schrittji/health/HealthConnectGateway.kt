@@ -6,10 +6,18 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.time.TimeRangeFilter
+import androidx.health.connect.client.units.Energy
+import androidx.health.connect.client.units.Length
 import dev.digitaldomi.schrittji.simulation.MinuteStepSlice
+import dev.digitaldomi.schrittji.simulation.WorkoutPlan
+import dev.digitaldomi.schrittji.simulation.WorkoutType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -46,7 +54,10 @@ class HealthConnectGateway(private val context: Context) {
 
     val requiredPermissions: Set<String> = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
-        HealthPermission.getWritePermission(StepsRecord::class)
+        HealthPermission.getWritePermission(StepsRecord::class),
+        HealthPermission.getWritePermission(ExerciseSessionRecord::class),
+        HealthPermission.getWritePermission(DistanceRecord::class),
+        HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class)
     )
 
     fun availability(): Int = HealthConnectClient.getSdkStatus(context)
@@ -82,6 +93,54 @@ class HealthConnectGateway(private val context: Context) {
         }
 
         return slices.size
+    }
+
+    suspend fun insertWorkouts(workouts: List<WorkoutPlan>): Int {
+        if (workouts.isEmpty()) {
+            return 0
+        }
+
+        val records = workouts.flatMap { workout ->
+            val metadata = Metadata.manualEntry()
+            val exerciseType = when (workout.type) {
+                WorkoutType.RUNNING -> ExerciseSessionRecord.EXERCISE_TYPE_RUNNING
+                WorkoutType.CYCLING -> ExerciseSessionRecord.EXERCISE_TYPE_BIKING
+            }
+            listOf<Record>(
+                ExerciseSessionRecord(
+                    startTime = workout.start.toInstant(),
+                    startZoneOffset = workout.start.offset,
+                    endTime = workout.end.toInstant(),
+                    endZoneOffset = workout.end.offset,
+                    metadata = metadata,
+                    exerciseType = exerciseType,
+                    title = workout.title,
+                    notes = workout.notes
+                ),
+                DistanceRecord(
+                    startTime = workout.start.toInstant(),
+                    startZoneOffset = workout.start.offset,
+                    endTime = workout.end.toInstant(),
+                    endZoneOffset = workout.end.offset,
+                    distance = Length.meters(workout.distanceMeters),
+                    metadata = metadata
+                ),
+                TotalCaloriesBurnedRecord(
+                    startTime = workout.start.toInstant(),
+                    startZoneOffset = workout.start.offset,
+                    endTime = workout.end.toInstant(),
+                    endZoneOffset = workout.end.offset,
+                    energy = Energy.kilocalories(workout.kilocalories),
+                    metadata = metadata
+                )
+            )
+        }
+
+        records.chunked(300).forEach { chunk ->
+            healthConnectClient.insertRecords(chunk)
+        }
+
+        return workouts.size
     }
 
     suspend fun readAllStepsSnapshot(): HealthConnectStepsSnapshot {

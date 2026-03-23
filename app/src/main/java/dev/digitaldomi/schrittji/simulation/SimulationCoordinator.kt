@@ -121,16 +121,19 @@ class SimulationCoordinator(
             return PublishResult(0, 0, safeStart, safeEnd, summary)
         }
 
-        val slices = stepSimulationEngine.generateBetween(safeStart, safeEnd, config)
-        val insertedRecords = healthConnectGateway.insertSlices(slices)
+        val generatedWindow = stepSimulationEngine.generateWindowData(safeStart, safeEnd, config)
+        val slices = generatedWindow.stepSlices
+        val workouts = generatedWindow.workouts
+        val insertedStepRecords = healthConnectGateway.insertSlices(slices)
+        val insertedWorkouts = healthConnectGateway.insertWorkouts(workouts)
         val stepCount = slices.sumOf { it.count }
-        val generatedDetails = buildGeneratedDetails(label, safeStart, safeEnd, slices)
-        val summary = if (slices.isEmpty()) {
+        val generatedDetails = buildGeneratedDetails(label, safeStart, safeEnd, slices, workouts)
+        val summary = if (slices.isEmpty() && workouts.isEmpty()) {
             "$label produced no slices for ${safeStart.format(formatter)} to ${safeEnd.format(formatter)}."
         } else {
             "$label created and added ${stepCount.formatThousands()} steps to Health Connect " +
-                "across $insertedRecords minute records from ${safeStart.format(formatter)} " +
-                "to ${safeEnd.format(formatter)}."
+                "across $insertedStepRecords minute records and $insertedWorkouts workouts " +
+                "from ${safeStart.format(formatter)} to ${safeEnd.format(formatter)}."
         }
 
         configStore.setLastPublished(safeEnd.toInstant())
@@ -150,24 +153,37 @@ class SimulationCoordinator(
         label: String,
         start: ZonedDateTime,
         end: ZonedDateTime,
-        slices: List<MinuteStepSlice>
+        slices: List<MinuteStepSlice>,
+        workouts: List<WorkoutPlan>
     ): String {
-        if (slices.isEmpty()) {
+        if (slices.isEmpty() && workouts.isEmpty()) {
             return "$label did not create any new step records for ${start.format(formatter)} to ${end.format(formatter)}."
         }
 
         val byDay = slices.groupBy { it.start.withZoneSameInstant(zoneId).toLocalDate() }
             .toSortedMap()
+        val workoutsByDay = workouts.groupBy { it.start.withZoneSameInstant(zoneId).toLocalDate() }
+            .toSortedMap()
+        val allDates = (byDay.keys + workoutsByDay.keys).sorted()
 
         return buildString {
             appendLine("$label window written to Health Connect")
             appendLine("${start.format(formatter)} - ${end.format(formatter)}")
-            appendLine("Total: ${slices.sumOf { it.count }.formatThousands()} steps in ${slices.size} minute records")
+            appendLine(
+                "Total: ${slices.sumOf { it.count }.formatThousands()} steps in ${slices.size} minute records " +
+                    "and ${workouts.size} workouts"
+            )
             appendLine()
 
-            byDay.entries.forEachIndexed { index, (day, daySlices) ->
-                append(renderDaySummary(day, daySlices))
-                if (index < byDay.size - 1) {
+            allDates.forEachIndexed { index, day ->
+                append(
+                    renderDaySummary(
+                        day,
+                        byDay[day].orEmpty(),
+                        workoutsByDay[day].orEmpty()
+                    )
+                )
+                if (index < allDates.size - 1) {
                     appendLine()
                     appendLine()
                 }
@@ -175,9 +191,13 @@ class SimulationCoordinator(
         }.trim()
     }
 
-    private fun renderDaySummary(day: LocalDate, daySlices: List<MinuteStepSlice>): String {
-        val first = daySlices.minBy { it.start.toInstant() }
-        val last = daySlices.maxBy { it.end.toInstant() }
+    private fun renderDaySummary(
+        day: LocalDate,
+        daySlices: List<MinuteStepSlice>,
+        dayWorkouts: List<WorkoutPlan>
+    ): String {
+        val first = daySlices.minByOrNull { it.start.toInstant() }
+        val last = daySlices.maxByOrNull { it.end.toInstant() }
         val steps = daySlices.sumOf { it.count }
         return buildString {
             append(day.format(dayFormatter))
@@ -187,10 +207,21 @@ class SimulationCoordinator(
             append(daySlices.size)
             append(" minute records")
             appendLine()
-            append("Active span: ")
-            append(first.start.format(timeFormatter))
-            append(" - ")
-            append(last.end.format(timeFormatter))
+            if (first != null && last != null) {
+                append("Active span: ")
+                append(first.start.format(timeFormatter))
+                append(" - ")
+                append(last.end.format(timeFormatter))
+            } else {
+                append("Active span: none")
+            }
+            if (dayWorkouts.isNotEmpty()) {
+                appendLine()
+                append("Workouts: ")
+                append(dayWorkouts.joinToString { workout ->
+                    "${workout.title} (${workout.start.format(timeFormatter)}-${workout.end.format(timeFormatter)})"
+                })
+            }
         }
     }
 }
