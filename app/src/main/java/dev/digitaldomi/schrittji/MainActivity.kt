@@ -11,9 +11,9 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILA
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import dev.digitaldomi.schrittji.chart.DualSeriesBarPoint
+import dev.digitaldomi.schrittji.chart.TimelineBarEntry
 import dev.digitaldomi.schrittji.databinding.ActivityMainBinding
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
-import dev.digitaldomi.schrittji.health.HealthConnectStepDaySummary
 import dev.digitaldomi.schrittji.health.HealthConnectStepsSnapshot
 import dev.digitaldomi.schrittji.simulation.SimulationConfig
 import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
@@ -37,7 +37,8 @@ class MainActivity : AppCompatActivity() {
     }
     private val formatter = DateTimeFormatter.ofPattern("EEE, MMM d HH:mm")
     private var latestSnapshot: HealthConnectStepsSnapshot? = null
-    private var chartMode: ChartMode = ChartMode.DAILY
+    private var chartMode: ChartMode = ChartMode.DETAIL
+    private var selectedProjectionDate: LocalDate = LocalDate.now()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,10 +66,23 @@ class MainActivity : AppCompatActivity() {
         binding.toggleChartMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             chartMode = when (checkedId) {
+                R.id.buttonModeDetail -> ChartMode.DETAIL
                 R.id.buttonModeWeekly -> ChartMode.WEEKLY
                 R.id.buttonModeMonthly -> ChartMode.MONTHLY
                 else -> ChartMode.DAILY
             }
+            renderOverviewChart(simulationCoordinator.loadConfig())
+        }
+        binding.buttonPreviousProjectionDay.setOnClickListener {
+            selectedProjectionDate = selectedProjectionDate.minusDays(1)
+            renderOverviewChart(simulationCoordinator.loadConfig())
+        }
+        binding.buttonNextProjectionDay.setOnClickListener {
+            selectedProjectionDate = selectedProjectionDate.plusDays(1)
+            renderOverviewChart(simulationCoordinator.loadConfig())
+        }
+        binding.buttonTodayProjectionDay.setOnClickListener {
+            selectedProjectionDate = LocalDate.now()
             renderOverviewChart(simulationCoordinator.loadConfig())
         }
     }
@@ -122,17 +136,29 @@ class MainActivity : AppCompatActivity() {
         )
 
         if (binding.toggleChartMode.checkedButtonId == View.NO_ID) {
-            binding.toggleChartMode.check(R.id.buttonModeDaily)
+            binding.toggleChartMode.check(R.id.buttonModeDetail)
         } else {
             renderOverviewChart(config)
         }
     }
 
     private fun renderOverviewChart(config: SimulationConfig) {
+        if (chartMode == ChartMode.DETAIL) {
+            renderProjectionDetail(config)
+            return
+        }
+        binding.panelLegend.visibility = View.VISIBLE
+        binding.panelDetailNavigation.visibility = View.GONE
+        binding.chartProjectionDetail.visibility = View.GONE
+        binding.textProjectionDetailSummary.visibility = View.GONE
+        binding.chartOverview.visibility = View.VISIBLE
+        binding.textChartSummary.visibility = View.VISIBLE
+        binding.textProjectionDescription.text = getString(R.string.projection_description)
         val points = when (chartMode) {
             ChartMode.DAILY -> buildDailyOverview(config)
             ChartMode.WEEKLY -> buildWeeklyOverview(config)
             ChartMode.MONTHLY -> buildMonthlyOverview(config)
+            ChartMode.DETAIL -> emptyList()
         }
         binding.chartOverview.submit(points)
         val existingTotal = points.sumOf { it.existingValue.toLong() }
@@ -144,6 +170,43 @@ class MainActivity : AppCompatActivity() {
             latestSnapshot?.latestEnd?.let {
                 appendLine()
                 append("Latest Health Connect end: ${it.format(formatter)}")
+            }
+        }
+    }
+
+    private fun renderProjectionDetail(config: SimulationConfig) {
+        binding.panelLegend.visibility = View.GONE
+        binding.panelDetailNavigation.visibility = View.VISIBLE
+        binding.chartProjectionDetail.visibility = View.VISIBLE
+        binding.textProjectionDetailSummary.visibility = View.VISIBLE
+        binding.chartOverview.visibility = View.GONE
+        binding.textChartSummary.visibility = View.GONE
+        binding.textProjectionDescription.text = "Projected Schrittji entries across a full 24-hour day."
+        binding.textSelectedProjectionDate.text =
+            selectedProjectionDate.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
+        binding.buttonTodayProjectionDay.isEnabled = selectedProjectionDate != LocalDate.now()
+
+        val detail = simulationCoordinator.projectDayDetail(config, selectedProjectionDate)
+        binding.chartProjectionDetail.submitEntries(
+            detail.slices.map { slice ->
+                TimelineBarEntry(
+                    startMinute = slice.start.hour * 60 + slice.start.minute,
+                    endMinute = slice.end.hour * 60 + slice.end.minute,
+                    value = slice.count.toFloat(),
+                    emphasized = false
+                )
+            }
+        )
+        binding.textProjectionDetailSummary.text = buildString {
+            appendLine("Projected total: ${detail.totalSteps.formatThousands()} steps")
+            appendLine("Generated entries: ${detail.slices.size}")
+            if (detail.workouts.isNotEmpty()) {
+                append("Workouts: ")
+                append(detail.workouts.joinToString { workout ->
+                    "${workout.title} ${workout.start.format(DateTimeFormatter.ofPattern("HH:mm"))}-${workout.end.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+                })
+            } else {
+                append("Workouts: none")
             }
         }
     }
@@ -237,6 +300,7 @@ class MainActivity : AppCompatActivity() {
 private fun Long.formatThousands(): String = "%,d".format(this)
 
 private enum class ChartMode {
+    DETAIL,
     DAILY,
     WEEKLY,
     MONTHLY

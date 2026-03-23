@@ -46,15 +46,6 @@ class SettingsActivity : AppCompatActivity() {
         binding.buttonOpenHealthBrowser.setOnClickListener {
             startActivity(Intent(this, HealthConnectStepsActivity::class.java))
         }
-        binding.buttonOpenProjectionDayDetail.setOnClickListener {
-            startActivity(
-                DayDetailActivity.newIntent(
-                    this,
-                    DayDetailSource.PROJECTION,
-                    java.time.LocalDate.now()
-                )
-            )
-        }
         binding.buttonSyncNow.setOnClickListener {
             lifecycleScope.launch {
                 val config = buildConfigFromInputs() ?: return@launch

@@ -9,6 +9,7 @@
     <string name="pattern_settings">Real-life pattern</string>
     <string name="minimum_daily_steps">Minimum daily steps from Schrittji only</string>
     <string name="maximum_daily_steps">Maximum daily steps from Schrittji only</string>
+    <string name="chart_detail">Detail</string>
     <string name="chart_daily">Daily</string>
     <string name="chart_weekly">Weekly</string>
     <string name="chart_monthly">Monthly</string>
@@ -41,9 +42,9 @@
     <string name="max_duration_minutes">Max duration (minutes)</string>
     <string name="open_health_data_browser">Open Health Connect browser</string>
     <string name="settings_actions">Quick actions</string>
-    <string name="open_projection_day_detail">Open projection day detail</string>
     <string name="day_detail_title_projection">Projection day detail</string>
     <string name="day_detail_title_health_connect">Health Connect day detail</string>
+    <string name="current_day">Today</string>
     <string name="previous_day">Previous day</string>
     <string name="next_day">Next day</string>
     <string name="day_detail_summary_header">Selected day summary</string>

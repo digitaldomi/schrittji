@@ -33,6 +33,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="@string/app_subtitle"
+                android:textColor="@color/brand_text"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
         </LinearLayout>
 
@@ -74,6 +75,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:text="@string/setup_health_connect"
+                android:textColor="@color/brand_text"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
         </LinearLayout>
 
@@ -96,6 +98,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:text="@string/setup_permissions"
+                android:textColor="@color/brand_text"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
         </LinearLayout>
 
@@ -118,6 +121,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:text="@string/setup_updates"
+                android:textColor="@color/brand_text"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
         </LinearLayout>
     </LinearLayout>
@@ -128,6 +132,14 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         app:singleSelection="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonModeDetail"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/chart_detail" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonModeDaily"
@@ -155,6 +167,7 @@
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
     <LinearLayout
+        android:id="@+id/panelLegend"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
@@ -172,6 +185,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:text="@string/legend_existing"
+            android:textColor="@color/brand_text"
             android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
 
         <View
@@ -186,6 +200,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:text="@string/legend_projected"
+            android:textColor="@color/brand_text"
             android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
     </LinearLayout>
 
@@ -195,6 +210,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="@string/projection_header"
+        android:textColor="@color/brand_text"
         android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
     <TextView
@@ -203,7 +219,71 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text="@string/projection_description"
+        android:textColor="@color/brand_text"
         android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+    <LinearLayout
+        android:id="@+id/panelDetailNavigation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonPreviousProjectionDay"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/previous_day" />
+
+        <TextView
+            android:id="@+id/textSelectedProjectionDate"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="@color/brand_text"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonTodayProjectionDay"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/current_day" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonNextProjectionDay"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/next_day" />
+    </LinearLayout>
+
+    <dev.digitaldomi.schrittji.chart.DayTimelineChartView
+        android:id="@+id/chartProjectionDetail"
+        android:layout_width="match_parent"
+        android:layout_height="260dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/panel_background"
+        android:padding="12dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/textProjectionDetailSummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/panel_background"
+        android:padding="16dp"
+        android:textColor="@color/brand_text"
+        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+        android:visibility="gone" />
 
     <dev.digitaldomi.schrittji.chart.DualSeriesBarChartView
         android:id="@+id/chartOverview"
@@ -220,5 +300,6 @@
         android:layout_marginTop="12dp"
         android:background="@drawable/panel_background"
         android:padding="16dp"
+        android:textColor="@color/brand_text"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 </LinearLayout>

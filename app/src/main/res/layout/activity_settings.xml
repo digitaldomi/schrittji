@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/surface_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -25,6 +27,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/settings_actions"
+            android:textColor="@color/brand_text"
             android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
         <com.google.android.material.button.MaterialButton
@@ -59,27 +62,24 @@
             android:layout_marginTop="12dp"
             android:text="@string/open_health_data_browser" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonOpenProjectionDayDetail"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/open_projection_day_detail" />
-
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/inputMinSteps"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:hint="@string/minimum_daily_steps">
+            android:hint="@string/minimum_daily_steps"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editMinSteps"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -88,13 +88,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/maximum_daily_steps">
+            android:hint="@string/maximum_daily_steps"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editMaxSteps"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.materialswitch.MaterialSwitch
@@ -102,6 +107,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:textColor="@color/brand_text"
             android:text="@string/continuous_publishing" />
 
         <TextView
@@ -109,6 +115,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:text="@string/running_workouts"
+            android:textColor="@color/brand_text"
             android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
         <com.google.android.material.textfield.TextInputLayout
@@ -117,13 +124,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/min_sessions_per_week">
+            android:hint="@string/min_sessions_per_week"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editRunningMinSessions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -132,13 +144,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/max_sessions_per_week">
+            android:hint="@string/max_sessions_per_week"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editRunningMaxSessions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -147,13 +164,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/min_duration_minutes">
+            android:hint="@string/min_duration_minutes"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editRunningMinDuration"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -162,13 +184,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/max_duration_minutes">
+            android:hint="@string/max_duration_minutes"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editRunningMaxDuration"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
@@ -176,6 +203,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:text="@string/cycling_workouts"
+            android:textColor="@color/brand_text"
             android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
         <com.google.android.material.textfield.TextInputLayout
@@ -184,13 +212,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/min_sessions_per_week">
+            android:hint="@string/min_sessions_per_week"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editCyclingMinSessions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -199,13 +232,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/max_sessions_per_week">
+            android:hint="@string/max_sessions_per_week"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editCyclingMaxSessions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -214,13 +252,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/min_duration_minutes">
+            android:hint="@string/min_duration_minutes"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editCyclingMinDuration"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -229,13 +272,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/max_duration_minutes">
+            android:hint="@string/max_duration_minutes"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/brand_primary_dark"
+            app:hintTextColor="@color/brand_text">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/editCyclingMaxDuration"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton

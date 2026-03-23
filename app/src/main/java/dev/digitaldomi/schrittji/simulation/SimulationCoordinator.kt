@@ -24,7 +24,8 @@ data class ProjectedStepDay(
 data class ProjectedStepDayDetail(
     val date: LocalDate,
     val totalSteps: Long,
-    val slices: List<MinuteStepSlice>
+    val slices: List<MinuteStepSlice>,
+    val workouts: List<WorkoutPlan>
 )
 
 class SimulationCoordinator(
@@ -59,11 +60,13 @@ class SimulationCoordinator(
     ): ProjectedStepDayDetail {
         val start = date.atStartOfDay(zoneId)
         val end = start.plusDays(1)
-        val slices = stepSimulationEngine.generateBetween(start, end, config)
+        val generatedWindow = stepSimulationEngine.generateWindowData(start, end, config)
+        val slices = generatedWindow.stepSlices
         return ProjectedStepDayDetail(
             date = date,
             totalSteps = slices.sumOf { it.count },
-            slices = slices
+            slices = slices,
+            workouts = generatedWindow.workouts
         )
     }
 

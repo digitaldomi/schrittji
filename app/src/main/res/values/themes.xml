@@ -3,8 +3,14 @@
     <style name="Theme.Schrittji" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorPrimaryContainer">@color/panel_background</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorOnSurface">@color/brand_text</item>
+        <item name="colorOnBackground">@color/brand_text</item>
+        <item name="colorOnSurfaceVariant">@color/brand_text</item>
         <item name="android:statusBarColor">@color/surface_background</item>
         <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
         <item name="android:windowBackground">@color/surface_background</item>
+        <item name="android:textColorPrimary">@color/brand_text</item>
+        <item name="android:textColorSecondary">@color/brand_text</item>
     </style>
 </resources>
