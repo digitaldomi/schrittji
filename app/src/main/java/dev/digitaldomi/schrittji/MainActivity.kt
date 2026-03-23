@@ -172,26 +172,39 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderProjectionDetail(config: SimulationConfig) {
-        binding.panelLegend.visibility = View.GONE
+        binding.panelLegend.visibility = View.VISIBLE
         binding.panelDetailContent.visibility = View.VISIBLE
         binding.panelOverviewContent.visibility = View.GONE
-        binding.textProjectionDescription.text = "Projected Schrittji entries across a full 24-hour day."
+        binding.textProjectionDescription.text = "Existing Health Connect entries and projected Schrittji entries across one day."
         binding.textSelectedProjectionDate.text =
             selectedProjectionDate.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
         binding.buttonTodayProjectionDay.isEnabled = selectedProjectionDate != LocalDate.now()
 
         val detail = simulationCoordinator.projectDayDetail(config, selectedProjectionDate)
+        val existingEntries = latestSnapshot?.records
+            ?.filter { it.start.toLocalDate() == selectedProjectionDate }
+            .orEmpty()
         binding.chartProjectionDetail.submitEntries(
-            detail.slices.map { slice ->
+            existingEntries.map { entry ->
+                TimelineBarEntry(
+                    startMinute = entry.start.hour * 60 + entry.start.minute,
+                    endMinute = entry.end.hour * 60 + entry.end.minute,
+                    value = entry.count.toFloat(),
+                    series = dev.digitaldomi.schrittji.chart.TimelineSeries.EXISTING,
+                    emphasized = false
+                )
+            } + detail.slices.map { slice ->
                 TimelineBarEntry(
                     startMinute = slice.start.hour * 60 + slice.start.minute,
                     endMinute = slice.end.hour * 60 + slice.end.minute,
                     value = slice.count.toFloat(),
+                    series = dev.digitaldomi.schrittji.chart.TimelineSeries.PROJECTED,
                     emphasized = false
                 )
             }
         )
         binding.textProjectionDetailSummary.text = buildString {
+            appendLine("Existing Health Connect: ${existingEntries.sumOf { it.count }.formatThousands()} steps")
             appendLine("Projected total: ${detail.totalSteps.formatThousands()} steps")
             appendLine("Generated entries: ${detail.slices.size}")
             if (detail.workouts.isNotEmpty()) {

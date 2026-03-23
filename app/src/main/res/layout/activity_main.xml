@@ -1,22 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/surface_background"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@color/surface_background">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:orientation="vertical">
 
             <TextView
@@ -26,27 +23,7 @@
                 android:text="@string/app_name"
                 android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
                 android:textColor="@color/brand_text" />
-
-            <TextView
-                android:id="@+id/textSubtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/app_subtitle"
-                android:textColor="@color/brand_text"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
         </LinearLayout>
-
-        <ImageButton
-            android:id="@+id/buttonSettings"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@drawable/panel_background"
-            android:contentDescription="@string/settings"
-            android:padding="12dp"
-            android:src="@android:drawable/ic_menu_manage"
-            app:tint="@color/brand_text" />
-    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/panelStatus"
@@ -323,3 +300,15 @@
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/buttonSettings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="20dp"
+        android:contentDescription="@string/settings"
+        android:src="@android:drawable/ic_menu_manage"
+        app:backgroundTint="@color/panel_background"
+        app:tint="@color/brand_text" />
+</FrameLayout>
