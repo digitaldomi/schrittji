@@ -5,301 +5,304 @@
     android:layout_height="match_parent"
     android:background="@color/surface_background">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/textTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/app_name"
-                android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
-                android:textColor="@color/brand_text" />
-        </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/panelStatus"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/panel_background"
-        android:orientation="vertical"
-        android:padding="16dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <View
-                android:id="@+id/dotHealthConnect"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:background="@drawable/status_dot" />
-
-            <TextView
-                android:id="@+id/textHealthConnectStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:text="@string/setup_health_connect"
-                android:textColor="@color/brand_text"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <View
-                android:id="@+id/dotPermissions"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:background="@drawable/status_dot" />
-
-            <TextView
-                android:id="@+id/textPermissionsStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:text="@string/setup_permissions"
-                android:textColor="@color/brand_text"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <View
-                android:id="@+id/dotUpdates"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:background="@drawable/status_dot" />
-
-            <TextView
-                android:id="@+id/textUpdatesStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:text="@string/setup_updates"
-                android:textColor="@color/brand_text"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <com.google.android.material.button.MaterialButtonToggleGroup
-        android:id="@+id/toggleChartMode"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        app:singleSelection="true">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonModeDetail"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/chart_detail" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonModeDaily"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/chart_daily" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonModeWeekly"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/chart_weekly" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonModeMonthly"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/chart_monthly" />
-    </com.google.android.material.button.MaterialButtonToggleGroup>
-
-    <LinearLayout
-        android:id="@+id/panelLegend"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <View
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:background="@drawable/status_dot"
-            android:backgroundTint="@color/chart_existing" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/legend_existing"
-            android:textColor="@color/brand_text"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
-
-        <View
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:layout_marginStart="16dp"
-            android:background="@drawable/status_dot"
-            android:backgroundTint="@color/chart_projected" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/legend_projected"
-            android:textColor="@color/brand_text"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/textProjectionHeader"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/projection_header"
-        android:textColor="@color/brand_text"
-        android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
-
-    <TextView
-        android:id="@+id/textProjectionDescription"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/projection_description"
-        android:textColor="@color/brand_text"
-        android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
-
-    <FrameLayout
-        android:id="@+id/panelChartContent"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="12dp"
-        android:layout_weight="1">
-
-        <LinearLayout
-            android:id="@+id/panelDetailContent"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
             android:orientation="vertical"
-            android:visibility="gone">
+            android:padding="16dp">
 
             <LinearLayout
-                android:id="@+id/panelDetailNavigation"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+                    android:textColor="@color/brand_text" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/panelStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/panel_background"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/dotHealthConnect"
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@drawable/status_dot" />
+
+                    <TextView
+                        android:id="@+id/textHealthConnectStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="@string/setup_health_connect"
+                        android:textColor="@color/brand_text"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/dotPermissions"
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@drawable/status_dot" />
+
+                    <TextView
+                        android:id="@+id/textPermissionsStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="@string/setup_permissions"
+                        android:textColor="@color/brand_text"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/dotUpdates"
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@drawable/status_dot" />
+
+                    <TextView
+                        android:id="@+id/textUpdatesStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="@string/setup_updates"
+                        android:textColor="@color/brand_text"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggleChartMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonModeDetail"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/chart_detail" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonModeDaily"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/chart_daily" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonModeWeekly"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/chart_weekly" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonModeMonthly"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/chart_monthly" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <LinearLayout
+                android:id="@+id/panelLegend"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonPreviousProjectionDay"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/previous_day" />
+                <View
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:background="@drawable/status_dot"
+                    android:backgroundTint="@color/chart_existing" />
 
                 <TextView
-                    android:id="@+id/textSelectedProjectionDate"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="12dp"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:textColor="@color/brand_text"
-                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonTodayProjectionDay"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/current_day" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonNextProjectionDay"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:text="@string/next_day" />
+                    android:text="@string/legend_existing"
+                    android:textColor="@color/brand_text"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+                <View
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_marginStart="16dp"
+                    android:background="@drawable/status_dot"
+                    android:backgroundTint="@color/chart_projected" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/legend_projected"
+                    android:textColor="@color/brand_text"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
             </LinearLayout>
 
-            <dev.digitaldomi.schrittji.chart.DayTimelineChartView
-                android:id="@+id/chartProjectionDetail"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_marginTop="12dp"
-                android:layout_weight="1"
-                android:background="@drawable/panel_background"
-                android:padding="12dp" />
-
             <TextView
-                android:id="@+id/textProjectionDetailSummary"
+                android:id="@+id/textProjectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/panel_background"
-                android:padding="16dp"
+                android:layout_marginTop="16dp"
+                android:text="@string/projection_header"
                 android:textColor="@color/brand_text"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/panelOverviewContent"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
-
-            <dev.digitaldomi.schrittji.chart.DualSeriesBarChartView
-                android:id="@+id/chartOverview"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:background="@drawable/panel_background"
-                android:padding="12dp" />
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
             <TextView
-                android:id="@+id/textChartSummary"
+                android:id="@+id/textProjectionDescription"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/panel_background"
-                android:padding="16dp"
+                android:layout_marginTop="4dp"
+                android:text="@string/projection_description"
                 android:textColor="@color/brand_text"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+            <FrameLayout
+                android:id="@+id/panelChartContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:id="@+id/panelDetailContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/panelDetailNavigation"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonPreviousProjectionDay"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/previous_day" />
+
+                        <TextView
+                            android:id="@+id/textSelectedProjectionDate"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_marginEnd="12dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:textColor="@color/brand_text"
+                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonTodayProjectionDay"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/current_day" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonNextProjectionDay"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="@string/next_day" />
+                    </LinearLayout>
+
+                    <dev.digitaldomi.schrittji.chart.DayTimelineChartView
+                        android:id="@+id/chartProjectionDetail"
+                        android:layout_width="match_parent"
+                        android:layout_height="320dp"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/panel_background"
+                        android:padding="12dp" />
+
+                    <TextView
+                        android:id="@+id/textProjectionDetailSummary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/panel_background"
+                        android:padding="16dp"
+                        android:textColor="@color/brand_text"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/panelOverviewContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <dev.digitaldomi.schrittji.chart.DualSeriesBarChartView
+                        android:id="@+id/chartOverview"
+                        android:layout_width="match_parent"
+                        android:layout_height="320dp"
+                        android:background="@drawable/panel_background"
+                        android:padding="12dp" />
+
+                    <TextView
+                        android:id="@+id/textChartSummary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/panel_background"
+                        android:padding="16dp"
+                        android:textColor="@color/brand_text"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                </LinearLayout>
+            </FrameLayout>
         </LinearLayout>
-    </FrameLayout>
-</LinearLayout>
+    </ScrollView>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/buttonSettings"
