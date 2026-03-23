@@ -11,4 +11,5 @@
     <color name="chart_workout">#D96B2B</color>
     <color name="status_ok">#2E9F61</color>
     <color name="status_bad">#D54848</color>
+    <color name="status_warn">#C27A00</color>
 </resources>

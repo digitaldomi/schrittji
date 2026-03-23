@@ -6,6 +6,11 @@
     <string name="open_health_connect">Open Health Connect</string>
     <string name="view_health_connect_steps">View all Health Connect steps</string>
     <string name="settings">Settings</string>
+    <string name="status_summary_all_ok">All set up</string>
+    <string name="status_summary_error_health">Health Connect unavailable</string>
+    <string name="status_summary_warning_permissions">Permissions needed</string>
+    <string name="status_summary_warning_updates">Updates need sync</string>
+    <string name="status_expand_hint">Show setup details</string>
     <string name="pattern_settings">Real-life pattern</string>
     <string name="minimum_daily_steps">Minimum daily steps from Schrittji only</string>
     <string name="maximum_daily_steps">Maximum daily steps from Schrittji only</string>

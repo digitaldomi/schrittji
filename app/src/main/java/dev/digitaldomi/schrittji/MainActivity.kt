@@ -1,9 +1,13 @@
 package dev.digitaldomi.schrittji
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE
@@ -46,11 +50,19 @@ class MainActivity : AppCompatActivity() {
     private var latestSnapshot: HealthConnectStepsSnapshot? = null
     private var chartMode: ChartMode = ChartMode.DETAIL
     private var selectedProjectionDate: LocalDate = LocalDate.now()
+    private var statusPanelExpanded: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.scrollMain) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
 
         setupListeners()
 
@@ -67,8 +79,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        binding.buttonSettings.setOnClickListener {
+        binding.buttonOpenSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
+        }
+        binding.panelStatusCollapsed.setOnClickListener {
+            statusPanelExpanded = !statusPanelExpanded
+            binding.panelStatusExpanded.visibility = if (statusPanelExpanded) View.VISIBLE else View.GONE
+            binding.iconStatusExpand.rotation = if (statusPanelExpanded) 180f else 0f
         }
         binding.toggleChartMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
@@ -153,6 +170,9 @@ class MainActivity : AppCompatActivity() {
             okText = "Updates current",
             badText = "Updates need sync"
         )
+        applyCollapsedStatusSummary(availability, permissionGranted, updatesOk)
+        binding.panelStatusExpanded.visibility = if (statusPanelExpanded) View.VISIBLE else View.GONE
+        binding.iconStatusExpand.rotation = if (statusPanelExpanded) 180f else 0f
 
         if (binding.toggleChartMode.checkedButtonId == View.NO_ID) {
             binding.toggleChartMode.check(R.id.buttonModeDetail)
@@ -168,7 +188,6 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
-        binding.panelLegend.visibility = View.VISIBLE
         binding.panelDetailContent.visibility = View.GONE
         binding.panelOverviewContent.visibility = View.VISIBLE
         val points = when (chartMode) {
@@ -192,7 +211,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private suspend fun renderProjectionDetail(config: SimulationConfig) {
-        binding.panelLegend.visibility = View.VISIBLE
         binding.panelDetailContent.visibility = View.VISIBLE
         binding.panelOverviewContent.visibility = View.GONE
         binding.textSelectedProjectionDate.text =
@@ -370,10 +388,45 @@ class MainActivity : AppCompatActivity() {
         okText: String,
         badText: String
     ) {
-        view.backgroundTintList = android.content.res.ColorStateList.valueOf(
+        view.backgroundTintList = ColorStateList.valueOf(
             ContextCompat.getColor(this, if (ok) R.color.status_ok else R.color.status_bad)
         )
         textView.text = if (ok) okText else badText
+    }
+
+    private fun applyCollapsedStatusSummary(
+        availability: Int,
+        permissionGranted: Boolean,
+        updatesOk: Boolean
+    ) {
+        val dot = binding.dotStatusSummary
+        val label = binding.textStatusSummary
+        when {
+            availability != SDK_AVAILABLE -> {
+                dot.backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(this, R.color.status_bad)
+                )
+                label.text = getString(R.string.status_summary_error_health)
+            }
+            !permissionGranted -> {
+                dot.backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(this, R.color.status_warn)
+                )
+                label.text = getString(R.string.status_summary_warning_permissions)
+            }
+            !updatesOk -> {
+                dot.backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(this, R.color.status_warn)
+                )
+                label.text = getString(R.string.status_summary_warning_updates)
+            }
+            else -> {
+                dot.backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(this, R.color.status_ok)
+                )
+                label.text = getString(R.string.status_summary_all_ok)
+            }
+        }
     }
 }
 
