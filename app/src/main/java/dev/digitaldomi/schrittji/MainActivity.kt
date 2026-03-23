@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
 
         val availability = healthConnectGateway.availability()
         val permissionGranted = if (availability == SDK_AVAILABLE) {
-            healthConnectGateway.hasRequiredPermissions()
+            healthConnectGateway.hasCoreHealthPermissions()
         } else {
             false
         }
@@ -203,7 +203,7 @@ class MainActivity : AppCompatActivity() {
         val existingEntries = latestSnapshot?.records
             ?.filter { it.start.toLocalDate() == selectedProjectionDate }
             .orEmpty()
-        val exerciseSessions = if (healthConnectGateway.hasRequiredPermissions()) {
+        val exerciseSessions = if (healthConnectGateway.hasExerciseReadPermission()) {
             try {
                 healthConnectGateway.readExerciseSessionsForDate(selectedProjectionDate)
             } catch (_: Exception) {

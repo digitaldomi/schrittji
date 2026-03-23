@@ -63,14 +63,25 @@ class HealthConnectGateway(private val context: Context) {
     private val zoneId: ZoneId = ZoneId.systemDefault()
     private val exerciseTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-    val requiredPermissions: Set<String> = setOf(
+    /**
+     * Permissions needed for steps, publishing workouts, and core Schrittji behavior.
+     * The status row and snapshot loading use [hasCoreHealthPermissions] only.
+     */
+    private val coreHealthPermissions: Set<String> = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(StepsRecord::class),
         HealthPermission.getWritePermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(DistanceRecord::class),
         HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class)
     )
+
+    private val exerciseReadPermission: String =
+        HealthPermission.getReadPermission(ExerciseSessionRecord::class)
+
+    /**
+     * Full set shown in Settings for grant; includes optional exercise read (timeline workout icons).
+     */
+    val requiredPermissions: Set<String> = coreHealthPermissions + exerciseReadPermission
 
     fun availability(): Int = HealthConnectClient.getSdkStatus(context)
 
@@ -78,10 +89,14 @@ class HealthConnectGateway(private val context: Context) {
         return PermissionController.createRequestPermissionResultContract()
     }
 
-    suspend fun hasRequiredPermissions(): Boolean {
+    suspend fun hasCoreHealthPermissions(): Boolean {
         return healthConnectClient.permissionController
             .getGrantedPermissions()
-            .containsAll(requiredPermissions)
+            .containsAll(coreHealthPermissions)
+    }
+
+    suspend fun hasExerciseReadPermission(): Boolean {
+        return exerciseReadPermission in healthConnectClient.permissionController.getGrantedPermissions()
     }
 
     suspend fun insertSlices(slices: List<MinuteStepSlice>): Int {

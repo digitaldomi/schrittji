@@ -35,7 +35,7 @@ class StepPublishingWorker(
             return Result.success()
         }
 
-        if (!healthConnectGateway.hasRequiredPermissions()) {
+        if (!healthConnectGateway.hasCoreHealthPermissions()) {
             configStore.setLastSummary(
                 "Background top-ups are paused until Schrittji regains Health Connect write permission."
             )

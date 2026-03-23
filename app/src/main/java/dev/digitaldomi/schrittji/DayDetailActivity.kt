@@ -89,7 +89,7 @@ class DayDetailActivity : AppCompatActivity() {
                 when (source) {
                     DayDetailSource.HEALTH_CONNECT -> {
                         val entries = healthConnectGateway.readStepEntriesForDate(selectedDate)
-                        val exercises = if (healthConnectGateway.hasRequiredPermissions()) {
+                        val exercises = if (healthConnectGateway.hasExerciseReadPermission()) {
                             try {
                                 healthConnectGateway.readExerciseSessionsForDate(selectedDate)
                             } catch (_: Exception) {
