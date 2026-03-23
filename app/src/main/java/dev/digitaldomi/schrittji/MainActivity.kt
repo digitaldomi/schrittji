@@ -148,11 +148,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
         binding.panelLegend.visibility = View.VISIBLE
-        binding.panelDetailNavigation.visibility = View.GONE
-        binding.chartProjectionDetail.visibility = View.GONE
-        binding.textProjectionDetailSummary.visibility = View.GONE
-        binding.chartOverview.visibility = View.VISIBLE
-        binding.textChartSummary.visibility = View.VISIBLE
+        binding.panelDetailContent.visibility = View.GONE
+        binding.panelOverviewContent.visibility = View.VISIBLE
         binding.textProjectionDescription.text = getString(R.string.projection_description)
         val points = when (chartMode) {
             ChartMode.DAILY -> buildDailyOverview(config)
@@ -176,11 +173,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderProjectionDetail(config: SimulationConfig) {
         binding.panelLegend.visibility = View.GONE
-        binding.panelDetailNavigation.visibility = View.VISIBLE
-        binding.chartProjectionDetail.visibility = View.VISIBLE
-        binding.textProjectionDetailSummary.visibility = View.VISIBLE
-        binding.chartOverview.visibility = View.GONE
-        binding.textChartSummary.visibility = View.GONE
+        binding.panelDetailContent.visibility = View.VISIBLE
+        binding.panelOverviewContent.visibility = View.GONE
         binding.textProjectionDescription.text = "Projected Schrittji entries across a full 24-hour day."
         binding.textSelectedProjectionDate.text =
             selectedProjectionDate.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
