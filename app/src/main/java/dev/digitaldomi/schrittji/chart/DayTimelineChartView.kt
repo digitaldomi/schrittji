@@ -14,6 +14,7 @@ import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.GestureDetectorCompat
 import dev.digitaldomi.schrittji.R
 import kotlin.math.max
+import kotlin.math.min
 
 enum class TimelineSeries {
     EXISTING,
@@ -78,6 +79,16 @@ class DayTimelineChartView @JvmOverloads constructor(
         style = Paint.Style.FILL
         color = workoutColor
         alpha = 220
+    }
+    private val workoutStripPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutColor
+        alpha = 235
+    }
+    private val workoutStripPaintProjected = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = projectedColor
+        alpha = 230
     }
     private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -186,6 +197,10 @@ class DayTimelineChartView @JvmOverloads constructor(
         val groupedWidth = (slotWidth * 0.32f).coerceAtLeast(2.5f * density)
         val singleWidth = (slotWidth * 0.72f).coerceAtLeast(6f * density)
 
+        val workoutStripHeight = 7f * density
+        val workoutStripBottom = chartBottom - (2f * density)
+        val workoutStripTop = workoutStripBottom - workoutStripHeight
+
         buckets.forEachIndexed { index, bucket ->
             val centerX = chartLeft + (slotWidth * index) + (slotWidth / 2f)
             val hasExisting = bucket.existingValue > 0f
@@ -246,22 +261,42 @@ class DayTimelineChartView @JvmOverloads constructor(
             }
         }
 
-        val iconSize = (18f * density).toInt()
-        val touchPad = 12f * density
         workoutOverlays.forEach { overlay ->
-            val centerX = minuteToX(overlay.midpointMinute, chartLeft, chartWidth)
-            val iconTop = chartTop + (6f * density)
-            val iconLeft = (centerX - iconSize / 2f).toInt()
+            val xStart = minuteToX(overlay.startMinute, chartLeft, chartWidth)
+            val xEnd = minuteToX(overlay.endMinute, chartLeft, chartWidth)
+            val left = min(xStart, xEnd)
+            val right = max(xStart, xEnd).coerceAtLeast(left + (3f * density))
+            val paint = if (overlay.isProjected) workoutStripPaintProjected else workoutStripPaint
+            canvas.drawRoundRect(
+                RectF(left, workoutStripTop, right, workoutStripBottom),
+                3f * density,
+                3f * density,
+                paint
+            )
+        }
+
+        val iconSizePx = 18f * density
+        val touchPad = 12f * density
+        val iconLayouts = layoutWorkoutIcons(
+            overlays = workoutOverlays,
+            chartLeft = chartLeft,
+            chartWidth = chartWidth,
+            chartTop = chartTop,
+            iconSize = iconSizePx,
+            workoutStripTop = workoutStripTop
+        )
+        iconLayouts.forEach { (overlay, centerX, iconTop) ->
+            val iconLeft = (centerX - iconSizePx / 2f).toInt()
             val iconTopI = iconTop.toInt()
-            val iconRight = iconLeft + iconSize
-            val iconBottom = iconTopI + iconSize
+            val iconRight = iconLeft + iconSizePx.toInt()
+            val iconBottom = iconTopI + iconSizePx.toInt()
 
             val drawable = when (overlay.kind) {
                 TimelineWorkoutKind.RUNNING -> runDrawable
                 TimelineWorkoutKind.CYCLING -> cycleDrawable
             }
             if (drawable != null) {
-                val tint = if (overlay.isProjected) projectedColor else existingColor
+                val tint = if (overlay.isProjected) projectedColor else workoutColor
                 DrawableCompat.setTint(drawable, tint)
                 drawable.bounds = Rect(iconLeft, iconTopI, iconRight, iconBottom)
                 drawable.draw(canvas)
@@ -290,6 +325,63 @@ class DayTimelineChartView @JvmOverloads constructor(
     private fun minuteToX(minute: Int, chartLeft: Float, chartWidth: Float): Float {
         val m = minute.coerceIn(0, 1440)
         return chartLeft + (m / 1440f) * chartWidth
+    }
+
+    /**
+     * Stacks workout icons vertically when their horizontal positions would overlap.
+     */
+    private fun layoutWorkoutIcons(
+        overlays: List<WorkoutOverlay>,
+        chartLeft: Float,
+        chartWidth: Float,
+        chartTop: Float,
+        iconSize: Float,
+        workoutStripTop: Float
+    ): List<Triple<WorkoutOverlay, Float, Float>> {
+        if (overlays.isEmpty()) return emptyList()
+
+        val horizontalPad = 4f * density
+        val verticalGap = 4f * density
+        val baseIconTop = chartTop + (6f * density)
+        val maxLane = 8
+        val minIconBottom = workoutStripTop - (2f * density)
+        val sorted = overlays.sortedWith(compareBy({ it.startMinute }, { it.endMinute }))
+        val placed = mutableListOf<RectF>()
+        val result = mutableListOf<Triple<WorkoutOverlay, Float, Float>>()
+
+        for (overlay in sorted) {
+            val centerX = minuteToX(overlay.midpointMinute, chartLeft, chartWidth)
+            var chosen: Pair<Float, RectF>? = null
+            for (lane in 0 until maxLane) {
+                val top = baseIconTop - lane * (iconSize + verticalGap)
+                val bottom = top + iconSize
+                if (bottom > minIconBottom) continue
+                val candidate = RectF(
+                    centerX - iconSize / 2f - horizontalPad,
+                    top - verticalGap,
+                    centerX + iconSize / 2f + horizontalPad,
+                    bottom + verticalGap
+                )
+                if (placed.none { RectF.intersects(it, candidate) }) {
+                    chosen = top to candidate
+                    break
+                }
+            }
+            val (top, rect) = chosen ?: run {
+                val lane = maxLane - 1
+                val t = baseIconTop - lane * (iconSize + verticalGap)
+                val candidate = RectF(
+                    centerX - iconSize / 2f - horizontalPad,
+                    t - verticalGap,
+                    centerX + iconSize / 2f + horizontalPad,
+                    t + iconSize + verticalGap
+                )
+                t to candidate
+            }
+            placed.add(rect)
+            result.add(Triple(overlay, centerX, top))
+        }
+        return result
     }
 
     private fun drawHourLabels(canvas: Canvas, chartLeft: Float, chartRight: Float, chartBottom: Float) {
@@ -385,6 +477,8 @@ class DayTimelineChartView @JvmOverloads constructor(
             if (entry.series != TimelineSeries.WORKOUT) return@mapNotNull null
             val kind = entry.workoutKind ?: return@mapNotNull null
             WorkoutOverlay(
+                startMinute = entry.startMinute.coerceIn(0, 1439),
+                endMinute = entry.endMinute.coerceIn(entry.startMinute + 1, 1440),
                 midpointMinute = ((entry.startMinute + entry.endMinute) / 2).coerceIn(0, 1440),
                 kind = kind,
                 title = entry.workoutTitle.orEmpty(),
@@ -396,6 +490,8 @@ class DayTimelineChartView @JvmOverloads constructor(
 }
 
 private data class WorkoutOverlay(
+    val startMinute: Int,
+    val endMinute: Int,
     val midpointMinute: Int,
     val kind: TimelineWorkoutKind,
     val title: String,
