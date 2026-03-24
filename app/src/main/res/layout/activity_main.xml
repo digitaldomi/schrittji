@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mainRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/surface_background">
 
-    <ScrollView
-        android:id="@+id/scrollMain"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:clipToPadding="false"
-        android:fillViewport="false"
-        android:scrollbars="none">
+        android:orientation="vertical">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -19,8 +17,7 @@
             android:orientation="vertical"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="12dp">
+            android:paddingTop="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -173,6 +170,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
+                app:selectionRequired="true"
                 app:singleSelection="true">
 
                 <com.google.android.material.button.MaterialButton
@@ -183,8 +181,6 @@
                     android:layout_weight="1"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
-                    android:paddingTop="0dp"
-                    android:paddingBottom="0dp"
                     android:text="@string/chart_day" />
 
                 <com.google.android.material.button.MaterialButton
@@ -195,304 +191,346 @@
                     android:layout_weight="1"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
-                    android:paddingTop="0dp"
-                    android:paddingBottom="0dp"
                     android:text="@string/chart_week" />
             </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/panelChartContent"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_weight="1">
 
             <LinearLayout
-                android:id="@+id/panelChartContent"
+                android:id="@+id/panelDetailContent"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:orientation="vertical">
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
 
-                <LinearLayout
-                    android:id="@+id/panelDetailContent"
+                <TextView
+                    android:id="@+id/textSelectedProjectionDate"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
+                    android:ellipsize="end"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:minHeight="26dp"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                    android:textColor="@color/brand_text" />
 
-                    <TextView
-                        android:id="@+id/textSelectedProjectionDate"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:gravity="center"
+                <LinearLayout
+                    android:id="@+id/panelDetailNavigation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonPreviousProjectionDay"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
                         android:maxLines="1"
-                        android:minHeight="28dp"
-                        android:textColor="@color/brand_text"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                        android:text="@string/nav_compact_prev" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonTodayProjectionDay"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:maxLines="1"
+                        android:text="@string/current_day" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonNextProjectionDay"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:maxLines="1"
+                        android:text="@string/nav_compact_next" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/panelLegend"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal">
 
                     <LinearLayout
-                        android:id="@+id/panelDetailNavigation"
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:gravity="center"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
                         android:orientation="horizontal">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/buttonPreviousProjectionDay"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="40dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:maxLines="1"
-                            android:text="@string/nav_compact_prev" />
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/status_dot"
+                            android:backgroundTint="@color/chart_existing" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/buttonTodayProjectionDay"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="0dp"
-                            android:layout_height="40dp"
-                            android:layout_marginStart="6dp"
-                            android:layout_marginEnd="6dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:maxLines="1"
-                            android:text="@string/current_day" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/buttonNextProjectionDay"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="40dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:maxLines="1"
-                            android:text="@string/nav_compact_next" />
-                    </LinearLayout>
-
-                    <HorizontalScrollView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fillViewport="true"
-                        android:scrollbars="none">
-
-                        <LinearLayout
-                            android:id="@+id/panelLegend"
+                        <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:paddingEnd="4dp">
+                            android:layout_marginStart="6dp"
+                            android:text="@string/legend_existing_short"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="@color/brand_text" />
+                    </LinearLayout>
 
-                            <View
-                                android:layout_width="8dp"
-                                android:layout_height="8dp"
-                                android:background="@drawable/status_dot"
-                                android:backgroundTint="@color/chart_existing" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="4dp"
-                                android:text="@string/legend_existing_short"
-                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                                android:textColor="@color/brand_text" />
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/status_dot"
+                            android:backgroundTint="@color/chart_projected" />
 
-                            <View
-                                android:layout_width="8dp"
-                                android:layout_height="8dp"
-                                android:layout_marginStart="10dp"
-                                android:background="@drawable/status_dot"
-                                android:backgroundTint="@color/chart_projected" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:text="@string/legend_projected_short"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="@color/brand_text" />
+                    </LinearLayout>
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="4dp"
-                                android:text="@string/legend_projected_short"
-                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                                android:textColor="@color/brand_text" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                            <View
-                                android:layout_width="8dp"
-                                android:layout_height="8dp"
-                                android:layout_marginStart="10dp"
-                                android:background="@drawable/status_dot"
-                                android:backgroundTint="@color/chart_workout" />
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/status_dot"
+                            android:backgroundTint="@color/chart_workout" />
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="4dp"
-                                android:text="@string/legend_workout_short"
-                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                                android:textColor="@color/brand_text" />
-                        </LinearLayout>
-                    </HorizontalScrollView>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:text="@string/legend_workout_short"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="@color/brand_text" />
+                    </LinearLayout>
+                </LinearLayout>
 
-                    <dev.digitaldomi.schrittji.chart.DayTimelineChartView
-                        android:id="@+id/chartProjectionDetail"
-                        android:layout_width="match_parent"
-                        android:layout_height="@dimen/chart_main_height"
-                        android:layout_marginTop="4dp"
-                        android:background="@drawable/panel_background"
-                        android:padding="4dp" />
+                <dev.digitaldomi.schrittji.chart.DayTimelineChartView
+                    android:id="@+id/chartProjectionDetail"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_marginTop="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/panel_background"
+                    android:minHeight="@dimen/chart_main_min_expand"
+                    android:padding="4dp" />
+
+                <androidx.core.widget.NestedScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:fillViewport="false"
+                    android:maxHeight="200dp">
 
                     <TextView
                         android:id="@+id/textProjectionDetailSummary"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
                         android:background="@drawable/panel_background"
-                        android:lineSpacingMultiplier="1.1"
-                        android:padding="10dp"
-                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:lineSpacingMultiplier="1.15"
+                        android:padding="12dp"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                         android:textColor="@color/brand_text" />
+                </androidx.core.widget.NestedScrollView>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/panelOverviewContent"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/textSelectedWeek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:minHeight="26dp"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                    android:textColor="@color/brand_text" />
+
+                <LinearLayout
+                    android:id="@+id/panelWeekNavigation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonPreviousWeek"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:maxLines="1"
+                        android:text="@string/nav_compact_prev" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonThisWeek"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:maxLines="1"
+                        android:text="@string/nav_compact_this_week" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonNextWeek"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:maxLines="1"
+                        android:text="@string/nav_compact_next" />
                 </LinearLayout>
 
                 <LinearLayout
-                    android:id="@+id/panelOverviewContent"
+                    android:id="@+id/panelLegendOverview"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:id="@+id/textSelectedWeek"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:minHeight="28dp"
-                        android:textColor="@color/brand_text"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal">
 
                     <LinearLayout
-                        android:id="@+id/panelWeekNavigation"
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:gravity="center"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
                         android:orientation="horizontal">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/buttonPreviousWeek"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="40dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:maxLines="1"
-                            android:text="@string/nav_compact_prev" />
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/status_dot"
+                            android:backgroundTint="@color/chart_existing" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/buttonThisWeek"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="0dp"
-                            android:layout_height="40dp"
-                            android:layout_marginStart="6dp"
-                            android:layout_marginEnd="6dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:maxLines="1"
-                            android:text="@string/nav_compact_this_week" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/buttonNextWeek"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="40dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:maxLines="1"
-                            android:text="@string/nav_compact_next" />
-                    </LinearLayout>
-
-                    <HorizontalScrollView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fillViewport="true"
-                        android:scrollbars="none">
-
-                        <LinearLayout
-                            android:id="@+id/panelLegendOverview"
+                        <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:paddingEnd="4dp">
+                            android:layout_marginStart="6dp"
+                            android:text="@string/legend_existing_short"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="@color/brand_text" />
+                    </LinearLayout>
 
-                            <View
-                                android:layout_width="8dp"
-                                android:layout_height="8dp"
-                                android:background="@drawable/status_dot"
-                                android:backgroundTint="@color/chart_existing" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="4dp"
-                                android:text="@string/legend_existing_short"
-                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                                android:textColor="@color/brand_text" />
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/status_dot"
+                            android:backgroundTint="@color/chart_projected" />
 
-                            <View
-                                android:layout_width="8dp"
-                                android:layout_height="8dp"
-                                android:layout_marginStart="10dp"
-                                android:background="@drawable/status_dot"
-                                android:backgroundTint="@color/chart_projected" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:text="@string/legend_projected_short"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="@color/brand_text" />
+                    </LinearLayout>
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="4dp"
-                                android:text="@string/legend_projected_short"
-                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                                android:textColor="@color/brand_text" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                            <View
-                                android:layout_width="8dp"
-                                android:layout_height="8dp"
-                                android:layout_marginStart="10dp"
-                                android:background="@drawable/status_dot"
-                                android:backgroundTint="@color/chart_workout" />
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/status_dot"
+                            android:backgroundTint="@color/chart_workout" />
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="4dp"
-                                android:text="@string/legend_workout_short"
-                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                                android:textColor="@color/brand_text" />
-                        </LinearLayout>
-                    </HorizontalScrollView>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:text="@string/legend_workout_short"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="@color/brand_text" />
+                    </LinearLayout>
+                </LinearLayout>
 
-                    <dev.digitaldomi.schrittji.chart.DualSeriesBarChartView
-                        android:id="@+id/chartOverview"
-                        android:layout_width="match_parent"
-                        android:layout_height="@dimen/chart_main_height"
-                        android:layout_marginTop="4dp"
-                        android:background="@drawable/panel_background"
-                        android:padding="4dp" />
+                <dev.digitaldomi.schrittji.chart.DualSeriesBarChartView
+                    android:id="@+id/chartOverview"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_marginTop="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/panel_background"
+                    android:minHeight="@dimen/chart_main_min_expand"
+                    android:padding="4dp" />
+
+                <androidx.core.widget.NestedScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:maxHeight="200dp">
 
                     <TextView
                         android:id="@+id/textChartSummary"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
                         android:background="@drawable/panel_background"
-                        android:lineSpacingMultiplier="1.1"
-                        android:padding="10dp"
-                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:lineSpacingMultiplier="1.15"
+                        android:padding="12dp"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                         android:textColor="@color/brand_text" />
-                </LinearLayout>
+                </androidx.core.widget.NestedScrollView>
             </LinearLayout>
-        </LinearLayout>
-    </ScrollView>
+        </FrameLayout>
+    </LinearLayout>
 </FrameLayout>

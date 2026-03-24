@@ -6,6 +6,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
+import android.view.View.MeasureSpec
 import dev.digitaldomi.schrittji.R
 import kotlin.math.max
 
@@ -26,7 +27,7 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     private val existingColor = context.getColor(R.color.chart_existing)
     private val projectedColor = context.getColor(R.color.chart_projected)
     private val workoutUnderlayRecorded = context.getColor(R.color.chart_workout_underlay)
-    private val workoutUnderlayProjected = context.getColor(R.color.chart_workout_underlay_projected)
+    private val workoutUnderlayProjected = context.getColor(R.color.chart_workout_underlay)
     private val axisColor = context.getColor(R.color.panel_stroke)
     private val textColor = context.getColor(R.color.brand_text)
 
@@ -65,10 +66,17 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val desiredHeight = resources.getDimensionPixelSize(R.dimen.chart_main_height)
+        val defaultHeight = resources.getDimensionPixelSize(R.dimen.chart_main_height)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
+        val height = when (heightMode) {
+            MeasureSpec.EXACTLY -> heightSize
+            MeasureSpec.AT_MOST -> kotlin.math.min(defaultHeight, heightSize)
+            else -> defaultHeight
+        }
         setMeasuredDimension(
             resolveSize(suggestedMinimumWidth, widthMeasureSpec),
-            resolveSize(desiredHeight, heightMeasureSpec)
+            height
         )
     }
 

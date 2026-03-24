@@ -99,6 +99,12 @@ class HealthConnectGateway(private val context: Context) {
         return exerciseReadPermission in healthConnectClient.permissionController.getGrantedPermissions()
     }
 
+    suspend fun hasAllRequestedPermissions(): Boolean {
+        return healthConnectClient.permissionController
+            .getGrantedPermissions()
+            .containsAll(requiredPermissions)
+    }
+
     suspend fun insertSlices(slices: List<MinuteStepSlice>): Int {
         if (slices.isEmpty()) {
             return 0

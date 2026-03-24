@@ -7,6 +7,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.GestureDetector
+import android.view.View.MeasureSpec
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
@@ -87,8 +88,8 @@ class DayTimelineChartView @JvmOverloads constructor(
     }
     private val workoutStripPaintProjected = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = projectedColor
-        alpha = 230
+        color = workoutColor
+        alpha = 200
     }
     private val workoutUnderlayRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -162,10 +163,17 @@ class DayTimelineChartView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val desiredHeight = resources.getDimensionPixelSize(R.dimen.chart_main_height)
+        val defaultHeight = resources.getDimensionPixelSize(R.dimen.chart_main_height)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
+        val height = when (heightMode) {
+            MeasureSpec.EXACTLY -> heightSize
+            MeasureSpec.AT_MOST -> kotlin.math.min(defaultHeight, heightSize)
+            else -> defaultHeight
+        }
         setMeasuredDimension(
             resolveSize(suggestedMinimumWidth, widthMeasureSpec),
-            resolveSize(desiredHeight, heightMeasureSpec)
+            height
         )
     }
 
@@ -313,7 +321,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                 TimelineWorkoutKind.CYCLING -> cycleDrawable
             }
             if (drawable != null) {
-                val tint = if (overlay.isProjected) projectedColor else workoutColor
+                val tint = workoutColor
                 DrawableCompat.setTint(drawable, tint)
                 drawable.bounds = Rect(iconLeft, iconTopI, iconRight, iconBottom)
                 drawable.draw(canvas)

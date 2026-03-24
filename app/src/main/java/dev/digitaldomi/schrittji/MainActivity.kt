@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.scrollMain) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.mainRoot) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
@@ -356,30 +356,32 @@ class MainActivity : AppCompatActivity() {
         exerciseSessions: List<dev.digitaldomi.schrittji.health.HealthConnectExerciseSession>
     ): String {
         return buildString {
-            appendLine("Existing Health Connect: ${existingEntries.sumOf { it.count }.formatThousands()} steps")
-            appendLine("Projected total: ${detail.totalSteps.formatThousands()} steps")
-            appendLine("Minute records: ${detail.slices.size}")
+            append("Existing ")
+            append(existingEntries.sumOf { it.count }.formatThousands())
+            append(" · Projected ")
+            appendLine(detail.totalSteps.formatThousands())
+            appendLine("${detail.slices.size} minute records")
             if (exerciseSessions.isNotEmpty()) {
-                appendLine("Recorded workouts (Health Connect):")
+                appendLine("Recorded:")
                 exerciseSessions.forEach { session ->
                     val dur = ChronoUnit.MINUTES.between(session.start, session.end).coerceAtLeast(1)
                     appendLine(
-                        "  • ${session.type.label()}: ${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)}, ${dur} min"
+                        "· ${session.type.label()} ${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)} · ${dur} min"
                     )
                 }
             }
             if (detail.workouts.isNotEmpty()) {
-                appendLine("Projected workouts:")
+                appendLine("Projected:")
                 detail.workouts.forEach { workout ->
                     val dur = ChronoUnit.MINUTES.between(workout.start, workout.end).coerceAtLeast(1)
                     val stepsInWorkout = sumStepsInWindow(detail.slices, workout.start, workout.end)
                     appendLine(
-                        "  • ${workout.type.label()}: ${workout.start.format(workoutTimeFormatter)}–${workout.end.format(workoutTimeFormatter)}, ${dur} min, ~${stepsInWorkout.formatThousands()} steps, ${String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0)}"
+                        "· ${workout.type.label()} ${workout.start.format(workoutTimeFormatter)}–${workout.end.format(workoutTimeFormatter)} · ${dur} min · ~${stepsInWorkout.formatThousands()} st · ${String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0)}"
                     )
                 }
             }
             if (exerciseSessions.isEmpty() && detail.workouts.isEmpty()) {
-                append("No workouts on this day.")
+                append("No workouts.")
             }
         }
     }
