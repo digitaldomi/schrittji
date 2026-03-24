@@ -17,9 +17,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="16dp">
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="8dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -92,7 +92,7 @@
                 android:id="@+id/panelStatusExpanded"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="4dp"
                 android:background="@drawable/panel_background"
                 android:orientation="vertical"
                 android:padding="12dp"
@@ -171,40 +171,24 @@
                 android:id="@+id/toggleChartMode"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="4dp"
                 app:singleSelection="true">
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonModeDetail"
+                    android:id="@+id/buttonModeDay"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/chart_detail" />
+                    android:text="@string/chart_day" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonModeDaily"
+                    android:id="@+id/buttonModeWeek"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/chart_daily" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonModeWeekly"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/chart_weekly" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonModeMonthly"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/chart_monthly" />
+                    android:text="@string/chart_week" />
             </com.google.android.material.button.MaterialButtonToggleGroup>
 
             <FrameLayout
@@ -265,7 +249,7 @@
                         android:id="@+id/panelLegend"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="0dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -317,18 +301,18 @@
                     <dev.digitaldomi.schrittji.chart.DayTimelineChartView
                         android:id="@+id/chartProjectionDetail"
                         android:layout_width="match_parent"
-                        android:layout_height="220dp"
-                        android:layout_marginTop="4dp"
+                        android:layout_height="@dimen/chart_main_height"
+                        android:layout_marginTop="2dp"
                         android:background="@drawable/panel_background"
-                        android:padding="8dp" />
+                        android:padding="6dp" />
 
                     <TextView
                         android:id="@+id/textProjectionDetailSummary"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="4dp"
                         android:background="@drawable/panel_background"
-                        android:padding="12dp"
+                        android:padding="10dp"
                         android:textColor="@color/brand_text"
                         android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
                 </LinearLayout>
@@ -340,10 +324,51 @@
                     android:orientation="vertical">
 
                     <LinearLayout
+                        android:id="@+id/panelWeekNavigation"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonPreviousWeek"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/previous_week" />
+
+                        <TextView
+                            android:id="@+id/textSelectedWeek"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginEnd="8dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
+                            android:textColor="@color/brand_text" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonThisWeek"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/current_week" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonNextWeek"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:text="@string/next_week" />
+                    </LinearLayout>
+
+                    <LinearLayout
                         android:id="@+id/panelLegendOverview"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="0dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -395,18 +420,18 @@
                     <dev.digitaldomi.schrittji.chart.DualSeriesBarChartView
                         android:id="@+id/chartOverview"
                         android:layout_width="match_parent"
-                        android:layout_height="280dp"
-                        android:layout_marginTop="4dp"
+                        android:layout_height="@dimen/chart_main_height"
+                        android:layout_marginTop="2dp"
                         android:background="@drawable/panel_background"
-                        android:padding="8dp" />
+                        android:padding="6dp" />
 
                     <TextView
                         android:id="@+id/textChartSummary"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="4dp"
                         android:background="@drawable/panel_background"
-                        android:padding="12dp"
+                        android:padding="10dp"
                         android:textColor="@color/brand_text"
                         android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
                 </LinearLayout>

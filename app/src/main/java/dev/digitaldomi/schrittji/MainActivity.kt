@@ -27,6 +27,7 @@ import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
 import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
 import dev.digitaldomi.schrittji.simulation.WorkoutPlan
 import dev.digitaldomi.schrittji.simulation.WorkoutType
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -35,6 +36,8 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import kotlin.math.max
+import kotlin.math.round
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -48,8 +51,9 @@ class MainActivity : AppCompatActivity() {
     private val formatter = DateTimeFormatter.ofPattern("EEE, MMM d HH:mm")
     private val workoutTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     private var latestSnapshot: HealthConnectStepsSnapshot? = null
-    private var chartMode: ChartMode = ChartMode.DETAIL
+    private var chartMode: ChartMode = ChartMode.DAY
     private var selectedProjectionDate: LocalDate = LocalDate.now()
+    private var selectedWeekStart: LocalDate = weekStartMonday(LocalDate.now())
     private var statusPanelExpanded: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,10 +94,8 @@ class MainActivity : AppCompatActivity() {
         binding.toggleChartMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             chartMode = when (checkedId) {
-                R.id.buttonModeDetail -> ChartMode.DETAIL
-                R.id.buttonModeWeekly -> ChartMode.WEEKLY
-                R.id.buttonModeMonthly -> ChartMode.MONTHLY
-                else -> ChartMode.DAILY
+                R.id.buttonModeWeek -> ChartMode.WEEK
+                else -> ChartMode.DAY
             }
             renderOverviewChart(simulationCoordinator.loadConfig())
         }
@@ -107,6 +109,18 @@ class MainActivity : AppCompatActivity() {
         }
         binding.buttonTodayProjectionDay.setOnClickListener {
             selectedProjectionDate = LocalDate.now()
+            renderOverviewChart(simulationCoordinator.loadConfig())
+        }
+        binding.buttonPreviousWeek.setOnClickListener {
+            selectedWeekStart = selectedWeekStart.minusWeeks(1)
+            renderOverviewChart(simulationCoordinator.loadConfig())
+        }
+        binding.buttonNextWeek.setOnClickListener {
+            selectedWeekStart = selectedWeekStart.plusWeeks(1)
+            renderOverviewChart(simulationCoordinator.loadConfig())
+        }
+        binding.buttonThisWeek.setOnClickListener {
+            selectedWeekStart = weekStartMonday(LocalDate.now())
             renderOverviewChart(simulationCoordinator.loadConfig())
         }
         binding.chartProjectionDetail.setOnWorkoutTapListener { info ->
@@ -175,36 +189,93 @@ class MainActivity : AppCompatActivity() {
         binding.iconStatusExpand.rotation = if (statusPanelExpanded) 180f else 0f
 
         if (binding.toggleChartMode.checkedButtonId == View.NO_ID) {
-            binding.toggleChartMode.check(R.id.buttonModeDetail)
+            binding.toggleChartMode.check(R.id.buttonModeDay)
         } else {
             renderOverviewChart(config)
         }
     }
 
     private fun renderOverviewChart(config: SimulationConfig) {
-        if (chartMode == ChartMode.DETAIL) {
+        if (chartMode == ChartMode.DAY) {
             lifecycleScope.launch {
                 renderProjectionDetail(config)
             }
             return
         }
+        lifecycleScope.launch {
+            renderWeekView(config)
+        }
+    }
+
+    private suspend fun renderWeekView(config: SimulationConfig) {
         binding.panelDetailContent.visibility = View.GONE
         binding.panelOverviewContent.visibility = View.VISIBLE
-        val points = when (chartMode) {
-            ChartMode.DAILY -> buildDailyOverview(config)
-            ChartMode.WEEKLY -> buildWeeklyOverview(config)
-            ChartMode.MONTHLY -> buildMonthlyOverview(config)
-            ChartMode.DETAIL -> emptyList()
+        val today = LocalDate.now()
+        val weekStart = selectedWeekStart
+        binding.textSelectedWeek.text = formatWeekRangeLabel(weekStart)
+        binding.buttonThisWeek.isEnabled = weekStart != weekStartMonday(today)
+
+        val dayMap = latestSnapshot?.daySummaries?.associateBy { it.date }.orEmpty()
+        val points = mutableListOf<DualSeriesBarPoint>()
+        var hcWorkouts = 0
+        var projectedWorkouts = 0
+
+        for (i in 0..6) {
+            val date = weekStart.plusDays(i.toLong())
+            val label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2)
+            val detail = simulationCoordinator.projectDayDetail(config, date)
+            projectedWorkouts += detail.workouts.size
+
+            val hcSessions = if (healthConnectGateway.hasExerciseReadPermission()) {
+                try {
+                    healthConnectGateway.readExerciseSessionsForDate(date)
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
+            hcWorkouts += hcSessions.size
+
+            val existing = when {
+                date.isBefore(today) -> (dayMap[date]?.totalSteps ?: 0L).toFloat()
+                date == today -> (dayMap[date]?.totalSteps ?: 0L).toFloat()
+                else -> 0f
+            }
+            val projected = when {
+                date.isAfter(today) -> detail.totalSteps.toFloat()
+                date == today -> max(0L, detail.totalSteps - (dayMap[date]?.totalSteps ?: 0L)).toFloat()
+                else -> 0f
+            }
+            points.add(
+                DualSeriesBarPoint(
+                    label = label,
+                    existingValue = existing,
+                    projectedValue = projected,
+                    hasRecordedWorkout = hcSessions.isNotEmpty(),
+                    hasProjectedWorkout = detail.workouts.isNotEmpty()
+                )
+            )
         }
+
         binding.chartOverview.submit(points)
-        val existingTotal = points.sumOf { it.existingValue.toLong() }
-        val projectedTotal = points.sumOf { it.projectedValue.toLong() }
+        val dayTotals = points.map { it.existingValue.toLong() + it.projectedValue.toLong() }
+        val avg = if (dayTotals.isNotEmpty()) dayTotals.sum().toDouble() / dayTotals.size else 0.0
+        val minV = dayTotals.minOrNull() ?: 0L
+        val maxV = dayTotals.maxOrNull() ?: 0L
         binding.textChartSummary.text = buildString {
-            append("Existing: ${existingTotal.formatThousands()} steps")
-            append("  |  ")
-            append("Projected: ${projectedTotal.formatThousands()} steps")
+            appendLine(
+                getString(
+                    R.string.week_summary_steps_range,
+                    avg.roundToThousandsLabel(),
+                    minV.formatThousands(),
+                    maxV.formatThousands()
+                )
+            )
+            appendLine(
+                getString(R.string.week_summary_workouts, hcWorkouts, projectedWorkouts)
+            )
             latestSnapshot?.latestEnd?.let {
-                appendLine()
                 append("Latest Health Connect end: ${it.format(formatter)}")
             }
         }
@@ -272,19 +343,60 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         )
-        binding.textProjectionDetailSummary.text = buildString {
+        binding.textProjectionDetailSummary.text = buildDetailSummaryText(
+            existingEntries = existingEntries,
+            detail = detail,
+            exerciseSessions = exerciseSessions
+        )
+    }
+
+    private fun buildDetailSummaryText(
+        existingEntries: List<dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry>,
+        detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail,
+        exerciseSessions: List<dev.digitaldomi.schrittji.health.HealthConnectExerciseSession>
+    ): String {
+        return buildString {
             appendLine("Existing Health Connect: ${existingEntries.sumOf { it.count }.formatThousands()} steps")
             appendLine("Projected total: ${detail.totalSteps.formatThousands()} steps")
-            appendLine("Generated entries: ${detail.slices.size}")
+            appendLine("Minute records: ${detail.slices.size}")
+            if (exerciseSessions.isNotEmpty()) {
+                appendLine("Recorded workouts (Health Connect):")
+                exerciseSessions.forEach { session ->
+                    val dur = ChronoUnit.MINUTES.between(session.start, session.end).coerceAtLeast(1)
+                    appendLine(
+                        "  • ${session.type.label()}: ${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)}, ${dur} min"
+                    )
+                }
+            }
             if (detail.workouts.isNotEmpty()) {
-                append("Workouts: ")
-                append(detail.workouts.joinToString { workout ->
-                    "${workout.title} ${workout.start.format(DateTimeFormatter.ofPattern("HH:mm"))}-${workout.end.format(DateTimeFormatter.ofPattern("HH:mm"))}"
-                })
-            } else {
-                append("Workouts: none")
+                appendLine("Projected workouts:")
+                detail.workouts.forEach { workout ->
+                    val dur = ChronoUnit.MINUTES.between(workout.start, workout.end).coerceAtLeast(1)
+                    val stepsInWorkout = sumStepsInWindow(detail.slices, workout.start, workout.end)
+                    appendLine(
+                        "  • ${workout.type.label()}: ${workout.start.format(workoutTimeFormatter)}–${workout.end.format(workoutTimeFormatter)}, ${dur} min, ~${stepsInWorkout.formatThousands()} steps, ${String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0)}"
+                    )
+                }
+            }
+            if (exerciseSessions.isEmpty() && detail.workouts.isEmpty()) {
+                append("No workouts on this day.")
             }
         }
+    }
+
+    private fun sumStepsInWindow(
+        slices: List<dev.digitaldomi.schrittji.simulation.MinuteStepSlice>,
+        start: java.time.ZonedDateTime,
+        end: java.time.ZonedDateTime
+    ): Long {
+        return slices.filter { slice ->
+            slice.end.isAfter(start) && slice.start.isBefore(end)
+        }.sumOf { it.count }
+    }
+
+    private fun WorkoutType.label(): String = when (this) {
+        WorkoutType.RUNNING -> getString(R.string.workout_title_running)
+        WorkoutType.CYCLING -> getString(R.string.workout_title_cycling)
     }
 
     private fun defaultWorkoutTitle(type: WorkoutType): String {
@@ -307,78 +419,6 @@ class MainActivity : AppCompatActivity() {
             }
             append(getString(R.string.workout_info_source_projected))
         }
-    }
-
-    private fun buildDailyOverview(config: SimulationConfig): List<DualSeriesBarPoint> {
-        val actualByDate = latestSnapshot?.daySummaries?.associateBy { it.date }.orEmpty()
-        val today = LocalDate.now()
-        val projection = simulationCoordinator.projectNextDays(config, 7).associateBy { it.date }
-        val past = (6 downTo 0).map { today.minusDays(it.toLong()) }.map { date ->
-            DualSeriesBarPoint(
-                label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3),
-                existingValue = (actualByDate[date]?.totalSteps ?: 0L).toFloat(),
-                projectedValue = 0f
-            )
-        }
-        val future = (1..7).map { today.plusDays(it.toLong()) }.map { date ->
-            DualSeriesBarPoint(
-                label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3),
-                existingValue = 0f,
-                projectedValue = (projection[date]?.totalSteps ?: 0L).toFloat()
-            )
-        }
-        return past + future
-    }
-
-    private fun buildWeeklyOverview(config: SimulationConfig): List<DualSeriesBarPoint> {
-        val dayMap = latestSnapshot?.daySummaries?.associateBy { it.date }.orEmpty()
-        val currentWeek = LocalDate.now().with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-        val actualWeeks = (7 downTo 0).map { currentWeek.minusWeeks(it.toLong()) }.map { weekStart ->
-            val total = (0..6).sumOf { dayMap[weekStart.plusDays(it.toLong())]?.totalSteps ?: 0L }
-            DualSeriesBarPoint(
-                label = weekStart.format(DateTimeFormatter.ofPattern("MM/dd")),
-                existingValue = total.toFloat(),
-                projectedValue = 0f
-            )
-        }
-        val projectedDays = simulationCoordinator.projectNextDays(config, 28).groupBy {
-            it.date.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-        }
-        val projectedWeeks = (1..4).map { currentWeek.plusWeeks(it.toLong()) }.map { weekStart ->
-            DualSeriesBarPoint(
-                label = weekStart.format(DateTimeFormatter.ofPattern("MM/dd")),
-                existingValue = 0f,
-                projectedValue = projectedDays[weekStart].orEmpty().sumOf { it.totalSteps }.toFloat()
-            )
-        }
-        return actualWeeks + projectedWeeks
-    }
-
-    private fun buildMonthlyOverview(config: SimulationConfig): List<DualSeriesBarPoint> {
-        val dayMap = latestSnapshot?.daySummaries?.associateBy { it.date }.orEmpty()
-        val currentMonth = LocalDate.now().withDayOfMonth(1)
-        val actualMonths = (5 downTo 0).map { currentMonth.minusMonths(it.toLong()) }.map { monthStart ->
-            val nextMonth = monthStart.plusMonths(1)
-            val total = dayMap.entries
-                .filter { it.key >= monthStart && it.key < nextMonth }
-                .sumOf { it.value.totalSteps }
-            DualSeriesBarPoint(
-                label = monthStart.format(DateTimeFormatter.ofPattern("MMM")),
-                existingValue = total.toFloat(),
-                projectedValue = 0f
-            )
-        }
-        val projectedDays = simulationCoordinator.projectNextDays(config, 120).groupBy {
-            it.date.withDayOfMonth(1)
-        }
-        val projectedMonths = (1..3).map { currentMonth.plusMonths(it.toLong()) }.map { monthStart ->
-            DualSeriesBarPoint(
-                label = monthStart.format(DateTimeFormatter.ofPattern("MMM")),
-                existingValue = 0f,
-                projectedValue = projectedDays[monthStart].orEmpty().sumOf { it.totalSteps }.toFloat()
-            )
-        }
-        return actualMonths + projectedMonths
     }
 
     private fun updateStatus(
@@ -432,6 +472,20 @@ class MainActivity : AppCompatActivity() {
 
 private fun Long.formatThousands(): String = "%,d".format(this)
 
+private fun Double.roundToThousandsLabel(): String {
+    return round(this).toLong().formatThousands()
+}
+
+private fun weekStartMonday(date: LocalDate): LocalDate {
+    return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+}
+
+private fun formatWeekRangeLabel(weekStart: LocalDate): String {
+    val end = weekStart.plusDays(6)
+    val fmt = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+    return "${weekStart.format(fmt)} – ${end.format(fmt)}"
+}
+
 private fun WorkoutType.toTimelineWorkoutKind(): TimelineWorkoutKind {
     return when (this) {
         WorkoutType.RUNNING -> TimelineWorkoutKind.RUNNING
@@ -440,8 +494,6 @@ private fun WorkoutType.toTimelineWorkoutKind(): TimelineWorkoutKind {
 }
 
 private enum class ChartMode {
-    DETAIL,
-    DAILY,
-    WEEKLY,
-    MONTHLY
+    DAY,
+    WEEK
 }

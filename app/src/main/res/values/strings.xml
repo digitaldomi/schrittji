@@ -14,10 +14,13 @@
     <string name="pattern_settings">Real-life pattern</string>
     <string name="minimum_daily_steps">Minimum daily steps from Schrittji only</string>
     <string name="maximum_daily_steps">Maximum daily steps from Schrittji only</string>
-    <string name="chart_detail">Detail</string>
-    <string name="chart_daily">Daily</string>
-    <string name="chart_weekly">Weekly</string>
-    <string name="chart_monthly">Monthly</string>
+    <string name="chart_day">Day</string>
+    <string name="chart_week">Week</string>
+    <string name="previous_week">Prev week</string>
+    <string name="next_week">Next week</string>
+    <string name="current_week">This week</string>
+    <string name="week_summary_steps_range">Steps per day (existing + projected): avg %1$s, min %2$s, max %3$s</string>
+    <string name="week_summary_workouts">Workouts this week: %1$d recorded (Health Connect), %2$d projected</string>
     <string name="legend_existing">Existing Health Connect data</string>
     <string name="legend_projected">Projected Schrittji data</string>
     <string name="legend_workout">Workouts</string>

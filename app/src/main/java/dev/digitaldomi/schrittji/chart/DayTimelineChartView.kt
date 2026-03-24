@@ -90,6 +90,14 @@ class DayTimelineChartView @JvmOverloads constructor(
         color = projectedColor
         alpha = 230
     }
+    private val workoutUnderlayRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = context.getColor(R.color.chart_workout_underlay)
+    }
+    private val workoutUnderlayProjectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = context.getColor(R.color.chart_workout_underlay_projected)
+    }
     private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1f * density
@@ -154,7 +162,7 @@ class DayTimelineChartView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val desiredHeight = (230 * density).toInt()
+        val desiredHeight = resources.getDimensionPixelSize(R.dimen.chart_main_height)
         setMeasuredDimension(
             resolveSize(suggestedMinimumWidth, widthMeasureSpec),
             resolveSize(desiredHeight, heightMeasureSpec)
@@ -171,8 +179,8 @@ class DayTimelineChartView @JvmOverloads constructor(
 
         val chartLeft = paddingLeft + 12f * density
         val chartRight = width - paddingRight - 12f * density
-        val chartTop = paddingTop + 14f * density
-        val chartBottom = height - paddingBottom - 24f * density
+        val chartTop = paddingTop + 10f * density
+        val chartBottom = height - paddingBottom - 18f * density
         val chartWidth = chartRight - chartLeft
 
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
@@ -200,6 +208,15 @@ class DayTimelineChartView @JvmOverloads constructor(
         val workoutStripHeight = 7f * density
         val workoutStripBottom = chartBottom - (2f * density)
         val workoutStripTop = workoutStripBottom - workoutStripHeight
+
+        workoutOverlays.forEach { overlay ->
+            val xStart = minuteToX(overlay.startMinute, chartLeft, chartWidth)
+            val xEnd = minuteToX(overlay.endMinute, chartLeft, chartWidth)
+            val left = min(xStart, xEnd)
+            val right = max(xStart, xEnd).coerceAtLeast(left + (3f * density))
+            val underPaint = if (overlay.isProjected) workoutUnderlayProjectedPaint else workoutUnderlayRecordedPaint
+            canvas.drawRect(left, chartTop, right, chartBottom, underPaint)
+        }
 
         buckets.forEachIndexed { index, bucket ->
             val centerX = chartLeft + (slotWidth * index) + (slotWidth / 2f)
