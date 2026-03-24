@@ -19,6 +19,12 @@
     <string name="previous_week">Prev week</string>
     <string name="next_week">Next week</string>
     <string name="current_week">This week</string>
+    <string name="nav_compact_prev">Prev</string>
+    <string name="nav_compact_next">Next</string>
+    <string name="nav_compact_this_week">Now</string>
+    <string name="legend_existing_short">Existing</string>
+    <string name="legend_projected_short">Projected</string>
+    <string name="legend_workout_short">Workouts</string>
     <string name="week_summary_steps_range">Steps per day (existing + projected): avg %1$s, min %2$s, max %3$s</string>
     <string name="week_summary_workouts">Workouts this week: %1$d recorded (Health Connect), %2$d projected</string>
     <string name="legend_existing">Existing Health Connect data</string>
