@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ThemeOverlay.Schrittji.AlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">@color/panel_background</item>
+        <item name="colorOnSurface">@color/brand_text</item>
+        <item name="android:textColorPrimary">@color/brand_text</item>
+    </style>
+</resources>

@@ -2,9 +2,14 @@ package dev.digitaldomi.schrittji
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
@@ -29,12 +34,22 @@ class SettingsActivity : AppCompatActivity() {
         PermissionController.createRequestPermissionResultContract()
     ) {
         showSnackbar("Health Connect permissions updated.")
+        lifecycleScope.launch {
+            updatePermissionButton()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
 
         binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
         binding.toolbar.setNavigationOnClickListener { finish() }
@@ -67,12 +82,41 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         populate(simulationCoordinator.loadConfig())
+        lifecycleScope.launch {
+            updatePermissionButton()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            updatePermissionButton()
+        }
+    }
+
+    private suspend fun updatePermissionButton() {
+        val allGranted = healthConnectGateway.availability() == SDK_AVAILABLE &&
+            healthConnectGateway.hasAllRequestedPermissions()
+        binding.buttonGrantPermission.text = if (allGranted) {
+            getString(R.string.grant_health_permission_done)
+        } else {
+            getString(R.string.grant_health_permission)
+        }
+        val color = ContextCompat.getColor(
+            this,
+            if (allGranted) R.color.status_ok else R.color.status_warn
+        )
+        binding.buttonGrantPermission.setTextColor(color)
+        binding.buttonGrantPermission.strokeColor = ColorStateList.valueOf(color)
     }
 
     private fun populate(config: SimulationConfig) {
+        binding.switchBackgroundService.isChecked = config.automationEnabled
+        binding.switchDailySteps.isChecked = config.dailyStepsEnabled
+        binding.switchRunningEnabled.isChecked = config.runningEnabled
+        binding.switchCyclingEnabled.isChecked = config.cyclingEnabled
         binding.editMinSteps.setText(config.minimumDailySteps.toString())
         binding.editMaxSteps.setText(config.maximumDailySteps.toString())
-        binding.switchAutomation.isChecked = config.automationEnabled
         binding.editRunningMinSessions.setText(config.runningMinSessionsPerWeek.toString())
         binding.editRunningMaxSessions.setText(config.runningMaxSessionsPerWeek.toString())
         binding.editRunningMinDuration.setText(config.runningMinDurationMinutes.toString())
@@ -121,7 +165,10 @@ class SettingsActivity : AppCompatActivity() {
         return current.copy(
             minimumDailySteps = minSteps,
             maximumDailySteps = maxSteps,
-            automationEnabled = binding.switchAutomation.isChecked,
+            dailyStepsEnabled = binding.switchDailySteps.isChecked,
+            automationEnabled = binding.switchBackgroundService.isChecked,
+            runningEnabled = binding.switchRunningEnabled.isChecked,
+            cyclingEnabled = binding.switchCyclingEnabled.isChecked,
             runningMinSessionsPerWeek = runningMinSessions!!,
             runningMaxSessionsPerWeek = runningMaxSessions!!,
             runningMinDurationMinutes = runningMinDuration!!,

@@ -7,8 +7,11 @@ import java.time.Instant
 data class SimulationConfig(
     val minimumDailySteps: Int = 7_500,
     val maximumDailySteps: Int = 22_000,
+    val dailyStepsEnabled: Boolean = true,
     val backfillDays: Int = 14,
     val automationEnabled: Boolean = false,
+    val runningEnabled: Boolean = true,
+    val cyclingEnabled: Boolean = true,
     val runningMinSessionsPerWeek: Int = 1,
     val runningMaxSessionsPerWeek: Int = 2,
     val runningMinDurationMinutes: Int = 26,
@@ -32,8 +35,11 @@ class SimulationConfigStore(context: Context) {
         return SimulationConfig(
             minimumDailySteps = preferences.getInt(KEY_MINIMUM_DAILY_STEPS, 7_500),
             maximumDailySteps = preferences.getInt(KEY_MAXIMUM_DAILY_STEPS, 22_000),
+            dailyStepsEnabled = preferences.getBoolean(KEY_DAILY_STEPS_ENABLED, true),
             backfillDays = preferences.getInt(KEY_BACKFILL_DAYS, 14),
             automationEnabled = preferences.getBoolean(KEY_AUTOMATION_ENABLED, false),
+            runningEnabled = preferences.getBoolean(KEY_RUNNING_ENABLED, true),
+            cyclingEnabled = preferences.getBoolean(KEY_CYCLING_ENABLED, true),
             runningMinSessionsPerWeek = preferences.getInt(KEY_RUNNING_MIN_SESSIONS, 1),
             runningMaxSessionsPerWeek = preferences.getInt(KEY_RUNNING_MAX_SESSIONS, 2),
             runningMinDurationMinutes = preferences.getInt(KEY_RUNNING_MIN_DURATION, 26),
@@ -60,8 +66,11 @@ class SimulationConfigStore(context: Context) {
         preferences.edit()
             .putInt(KEY_MINIMUM_DAILY_STEPS, config.minimumDailySteps)
             .putInt(KEY_MAXIMUM_DAILY_STEPS, config.maximumDailySteps)
+            .putBoolean(KEY_DAILY_STEPS_ENABLED, config.dailyStepsEnabled)
             .putInt(KEY_BACKFILL_DAYS, config.backfillDays)
             .putBoolean(KEY_AUTOMATION_ENABLED, config.automationEnabled)
+            .putBoolean(KEY_RUNNING_ENABLED, config.runningEnabled)
+            .putBoolean(KEY_CYCLING_ENABLED, config.cyclingEnabled)
             .putInt(KEY_RUNNING_MIN_SESSIONS, config.runningMinSessionsPerWeek)
             .putInt(KEY_RUNNING_MAX_SESSIONS, config.runningMaxSessionsPerWeek)
             .putInt(KEY_RUNNING_MIN_DURATION, config.runningMinDurationMinutes)
@@ -112,7 +121,10 @@ class SimulationConfigStore(context: Context) {
         private const val PREFS_NAME = "schrittji_simulation"
         private const val KEY_MINIMUM_DAILY_STEPS = "minimum_daily_steps"
         private const val KEY_MAXIMUM_DAILY_STEPS = "maximum_daily_steps"
+        private const val KEY_DAILY_STEPS_ENABLED = "daily_steps_enabled"
         private const val KEY_BACKFILL_DAYS = "backfill_days"
+        private const val KEY_RUNNING_ENABLED = "running_enabled"
+        private const val KEY_CYCLING_ENABLED = "cycling_enabled"
         private const val KEY_AUTOMATION_ENABLED = "automation_enabled"
         private const val KEY_RUNNING_MIN_SESSIONS = "running_min_sessions"
         private const val KEY_RUNNING_MAX_SESSIONS = "running_max_sessions"

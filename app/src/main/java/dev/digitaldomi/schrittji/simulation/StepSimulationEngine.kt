@@ -137,6 +137,9 @@ class StepSimulationEngine {
         val wakeTime = buildWakeTime(date, zoneId, random, isWeekend, weeklyRoutine)
         val sleepTime = buildSleepTime(date, zoneId, random, isWeekend)
         val workouts = generateWorkoutPlans(date, random, isWeekend, wakeTime, sleepTime, weeklyRoutine, config)
+        if (!config.dailyStepsEnabled) {
+            return GeneratedDayData(stepSlices = emptyList(), workouts = workouts)
+        }
         val minuteCounts = linkedMapOf<ZonedDateTime, Int>()
         val windows = buildWindows(date, zoneId, wakeTime, sleepTime, random, isWeekend, weeklyRoutine, workouts)
 
@@ -695,7 +698,7 @@ class StepSimulationEngine {
     ): List<WorkoutPlan> {
         val workouts = mutableListOf<WorkoutPlan>()
 
-        if (date.dayOfWeek in weeklyRoutine.runningDays) {
+        if (config.runningEnabled && date.dayOfWeek in weeklyRoutine.runningDays) {
             val duration = randomDuration(
                 config.runningMinDurationMinutes,
                 config.runningMaxDurationMinutes,
@@ -722,7 +725,7 @@ class StepSimulationEngine {
             )
         }
 
-        if (date.dayOfWeek in weeklyRoutine.cyclingDays) {
+        if (config.cyclingEnabled && date.dayOfWeek in weeklyRoutine.cyclingDays) {
             val duration = randomDuration(
                 config.cyclingMinDurationMinutes,
                 config.cyclingMaxDurationMinutes,

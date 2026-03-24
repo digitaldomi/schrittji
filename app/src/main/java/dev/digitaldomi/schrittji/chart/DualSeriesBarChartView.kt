@@ -6,13 +6,16 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
+import android.view.View.MeasureSpec
 import dev.digitaldomi.schrittji.R
 import kotlin.math.max
 
 data class DualSeriesBarPoint(
     val label: String,
     val existingValue: Float,
-    val projectedValue: Float
+    val projectedValue: Float,
+    val hasRecordedWorkout: Boolean = false,
+    val hasProjectedWorkout: Boolean = false
 )
 
 class DualSeriesBarChartView @JvmOverloads constructor(
@@ -23,6 +26,8 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     private val scaledDensity = density * resources.configuration.fontScale
     private val existingColor = context.getColor(R.color.chart_existing)
     private val projectedColor = context.getColor(R.color.chart_projected)
+    private val workoutUnderlayRecorded = context.getColor(R.color.chart_workout_underlay)
+    private val workoutUnderlayProjected = context.getColor(R.color.chart_workout_underlay)
     private val axisColor = context.getColor(R.color.panel_stroke)
     private val textColor = context.getColor(R.color.brand_text)
 
@@ -44,6 +49,14 @@ class DualSeriesBarChartView @JvmOverloads constructor(
         textAlign = Paint.Align.CENTER
         textSize = 10f * scaledDensity
     }
+    private val underlayRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutUnderlayRecorded
+    }
+    private val underlayProjectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutUnderlayProjected
+    }
 
     private var points: List<DualSeriesBarPoint> = emptyList()
 
@@ -53,10 +66,17 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val desiredHeight = (230 * density).toInt()
+        val defaultHeight = resources.getDimensionPixelSize(R.dimen.chart_main_height)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
+        val height = when (heightMode) {
+            MeasureSpec.EXACTLY -> heightSize
+            MeasureSpec.AT_MOST -> kotlin.math.min(defaultHeight, heightSize)
+            else -> defaultHeight
+        }
         setMeasuredDimension(
             resolveSize(suggestedMinimumWidth, widthMeasureSpec),
-            resolveSize(desiredHeight, heightMeasureSpec)
+            height
         )
     }
 
@@ -69,10 +89,9 @@ class DualSeriesBarChartView @JvmOverloads constructor(
 
         val chartLeft = paddingLeft + 12f * density
         val chartRight = width - paddingRight - 12f * density
-        val chartTop = paddingTop + 16f * density
-        val chartBottom = height - paddingBottom - 24f * density
+        val chartTop = paddingTop + 12f * density
+        val chartBottom = height - paddingBottom - 20f * density
         val chartWidth = chartRight - chartLeft
-        val chartHeight = chartBottom - chartTop
         val maxValue = max(
             1f,
             points.maxOf { max(it.existingValue, it.projectedValue) }
@@ -81,6 +100,28 @@ class DualSeriesBarChartView @JvmOverloads constructor(
         val barWidth = (slotWidth * 0.28f).coerceAtLeast(4f * density)
 
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
+
+        points.forEachIndexed { index, point ->
+            val slotLeft = chartLeft + slotWidth * index
+            if (point.hasRecordedWorkout) {
+                canvas.drawRect(
+                    slotLeft + 1f * density,
+                    chartTop,
+                    slotLeft + slotWidth / 2f,
+                    chartBottom,
+                    underlayRecordedPaint
+                )
+            }
+            if (point.hasProjectedWorkout) {
+                canvas.drawRect(
+                    slotLeft + slotWidth / 2f,
+                    chartTop,
+                    slotLeft + slotWidth - 1f * density,
+                    chartBottom,
+                    underlayProjectedPaint
+                )
+            }
+        }
 
         points.forEachIndexed { index, point ->
             val centerX = chartLeft + (slotWidth * index) + (slotWidth / 2f)
