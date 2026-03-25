@@ -95,8 +95,8 @@ class HealthConnectStepsActivity : AppCompatActivity() {
         headerBinding.textSummary.text = buildString {
             appendLine("Total visible step records: ${snapshot.totalRecords}")
             appendLine("Total visible steps: ${snapshot.totalSteps.formatThousands()}")
-            appendLine("Schrittji records: ${snapshot.ownRecords}")
-            appendLine("Schrittji steps: ${snapshot.ownSteps.formatThousands()}")
+            appendLine("Records from this app: ${snapshot.ownRecords}")
+            appendLine("Steps from this app: ${snapshot.ownSteps.formatThousands()}")
             appendLine()
             append(
                 snapshot.earliestStart?.let {

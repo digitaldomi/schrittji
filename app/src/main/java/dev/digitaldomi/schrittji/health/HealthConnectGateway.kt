@@ -12,6 +12,7 @@ import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.Energy
@@ -76,6 +77,21 @@ class HealthConnectGateway(private val context: Context) {
     private val zoneId: ZoneId = ZoneId.systemDefault()
     private val exerciseTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
+    /** Steps: passive capture from a wrist device (avoids manual-entry labeling in Health Connect). */
+    private val stepsRecordMetadata: Metadata by lazy {
+        Metadata.autoRecorded(Device(type = Device.TYPE_WATCH))
+    }
+
+    /** Workouts: user-started session on phone (generic device, no app name in record fields). */
+    private val workoutSessionMetadata: Metadata by lazy {
+        Metadata.activelyRecorded(Device(type = Device.TYPE_PHONE))
+    }
+
+    /** Distance / calories linked to the same workout window. */
+    private val workoutCompanionMetadata: Metadata by lazy {
+        Metadata.activelyRecorded(Device(type = Device.TYPE_PHONE))
+    }
+
     /**
      * Permissions needed for steps, writing workouts, and **reading** exercise sessions back
      * (charts and day detail). Exercise read is required for sessions to appear in the app;
@@ -127,7 +143,7 @@ class HealthConnectGateway(private val context: Context) {
             healthConnectClient.insertRecords(
                 chunk.map { slice ->
                     StepsRecord(
-                        metadata = Metadata.manualEntry(),
+                        metadata = stepsRecordMetadata,
                         startTime = slice.start.toInstant(),
                         startZoneOffset = slice.start.offset,
                         endTime = slice.end.toInstant(),
@@ -147,7 +163,6 @@ class HealthConnectGateway(private val context: Context) {
         }
 
         val records = workouts.flatMap { workout ->
-            val metadata = Metadata.manualEntry()
             val exerciseType = when (workout.type) {
                 WorkoutType.RUNNING -> ExerciseSessionRecord.EXERCISE_TYPE_RUNNING
                 WorkoutType.CYCLING -> ExerciseSessionRecord.EXERCISE_TYPE_BIKING
@@ -160,7 +175,7 @@ class HealthConnectGateway(private val context: Context) {
                         startZoneOffset = workout.start.offset,
                         endTime = workout.end.toInstant(),
                         endZoneOffset = workout.end.offset,
-                        metadata = metadata,
+                        metadata = workoutSessionMetadata,
                         exerciseType = exerciseType,
                         title = workout.title,
                         notes = workout.notes
@@ -174,7 +189,7 @@ class HealthConnectGateway(private val context: Context) {
                             endTime = workout.end.toInstant(),
                             endZoneOffset = workout.end.offset,
                             distance = Length.meters(workout.distanceMeters),
-                            metadata = metadata
+                            metadata = workoutCompanionMetadata
                         )
                     )
                 }
@@ -185,7 +200,7 @@ class HealthConnectGateway(private val context: Context) {
                         endTime = workout.end.toInstant(),
                         endZoneOffset = workout.end.offset,
                         energy = Energy.kilocalories(workout.kilocalories),
-                        metadata = metadata
+                        metadata = workoutCompanionMetadata
                     )
                 )
             }
@@ -366,13 +381,6 @@ class HealthConnectGateway(private val context: Context) {
             ExerciseSessionRecord.EXERCISE_TYPE_STRETCHING -> return WorkoutType.MINDFULNESS
         }
         val blob = "${title.orEmpty()} ${notes.orEmpty()}".lowercase(Locale.ROOT)
-        if ("schrittji" in blob) {
-            return when {
-                "bike" in blob || "cycling" in blob || "rad" in blob -> WorkoutType.CYCLING
-                "mindful" in blob || "yoga" in blob || "breath" in blob -> WorkoutType.MINDFULNESS
-                else -> WorkoutType.RUNNING
-            }
-        }
         if ("run" in blob || "lauf" in blob || "jog" in blob) return WorkoutType.RUNNING
         if ("bike" in blob || "cycling" in blob || "radfahren" in blob || "fahrrad" in blob) {
             return WorkoutType.CYCLING
@@ -392,19 +400,7 @@ class HealthConnectGateway(private val context: Context) {
             )
             appendLine("Duration: $duration min")
             session.notes?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
-            when {
-                session.isFromSchrittji ->
-                    append(context.getString(R.string.workout_hc_source_schrittji))
-                session.dataOriginPackage.isNotBlank() ->
-                    append(
-                        context.getString(
-                            R.string.workout_hc_source_other_app,
-                            session.dataOriginPackage
-                        )
-                    )
-                else ->
-                    append(context.getString(R.string.workout_hc_source_health_connect))
-            }
+            append(context.getString(R.string.workout_hc_source_health_connect))
         }
     }
 }

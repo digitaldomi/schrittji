@@ -38,9 +38,10 @@ class StepRecordAdapter(context: Context) : BaseAdapter() {
             "${item.count.formatThousands()} steps  |  ${item.start.format(timeFormatter)} - ${item.end.format(timeFormatter)}"
         binding.textSecondary.text = buildString {
             append("Source: ")
-            append(if (item.sourcePackage.isBlank()) "Unknown app" else item.sourcePackage)
-            if (item.isFromSchrittji) {
-                append("  |  Written by Schrittji")
+            when {
+                item.isFromSchrittji -> append("This app")
+                item.sourcePackage.isBlank() -> append("Unknown")
+                else -> append(item.sourcePackage)
             }
         }
         return binding.root

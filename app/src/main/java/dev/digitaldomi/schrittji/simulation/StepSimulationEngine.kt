@@ -33,7 +33,8 @@ data class WorkoutPlan(
     val start: ZonedDateTime,
     val end: ZonedDateTime,
     val title: String,
-    val notes: String,
+    /** Optional; omitted when writing to Health Connect so nothing identifiable is stored. */
+    val notes: String?,
     val distanceMeters: Double,
     val kilocalories: Double
 )
@@ -732,8 +733,8 @@ class StepSimulationEngine {
                 type = WorkoutType.RUNNING,
                 start = start,
                 end = end,
-                title = if (isWeekend) "Weekend run" else "Evening run",
-                notes = "Steady pace; mostly flat route.",
+                title = "Running",
+                notes = null,
                 distanceMeters = duration * paceMetersPerMinute,
                 kilocalories = duration * random.nextDouble(10.5, 14.5)
             )
@@ -759,8 +760,8 @@ class StepSimulationEngine {
                 type = WorkoutType.CYCLING,
                 start = start,
                 end = end,
-                title = if (isWeekend) "Weekend ride" else "After-work ride",
-                notes = "Moderate effort; mixed terrain.",
+                title = "Cycling",
+                notes = null,
                 distanceMeters = duration * distanceMetersPerMinute,
                 kilocalories = duration * random.nextDouble(7.0, 11.5)
             )
@@ -791,8 +792,8 @@ class StepSimulationEngine {
                     type = WorkoutType.MINDFULNESS,
                     start = start,
                     end = end,
-                    title = if (start.hour < 12) "Morning mindfulness" else "Evening mindfulness",
-                    notes = "Calm breathing and body scan.",
+                    title = "Mindfulness",
+                    notes = null,
                     distanceMeters = 0.0,
                     kilocalories = duration * random.nextDouble(1.2, 2.8)
                 )

@@ -21,7 +21,7 @@ Schrittji is a small Android app for generating realistic-looking step activity 
 
 1. Install the APK on your Android device.
 2. Open Schrittji.
-3. Open Health Connect and grant Schrittji permissions for steps and exercise (read/write as prompted), including **Exercise** read so charts can load workout sessions.
+3. Open Health Connect and grant permissions for steps and exercise (read/write as prompted), including **Exercise** read so charts can load workout sessions. Records are written with generic titles and device metadata (no manual-entry notes); Health Connect still attributes data to this app as the writer.
 4. Set Schrittji-only daily min/max steps and a backfill window.
 5. Use **Backfill selected history window** to seed prior days.
 6. Turn on continuous publishing and save settings if you want ongoing updates every ~15 minutes.

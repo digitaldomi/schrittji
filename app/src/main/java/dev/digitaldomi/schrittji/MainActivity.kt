@@ -387,13 +387,8 @@ class MainActivity : AppCompatActivity() {
                 appendLine(getString(R.string.summary_recorded_header))
                 exerciseSessions.forEach { session ->
                     val dur = ChronoUnit.MINUTES.between(session.start, session.end).coerceAtLeast(1)
-                    val tag = if (session.isFromSchrittji) {
-                        " " + getString(R.string.summary_tag_schrittji_hc)
-                    } else {
-                        ""
-                    }
                     appendLine(
-                        "· ${session.type.label()} ${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)} · ${dur} min$tag"
+                        "· ${session.type.label()} ${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)} · ${dur} min"
                     )
                 }
             }
@@ -455,9 +450,7 @@ class MainActivity : AppCompatActivity() {
             if (workout.type != WorkoutType.MINDFULNESS) {
                 appendLine(String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0))
             }
-            if (workout.notes.isNotBlank()) {
-                appendLine(workout.notes)
-            }
+            workout.notes?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
             append(getString(R.string.workout_info_source_projected))
         }
     }

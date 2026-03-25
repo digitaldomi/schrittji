@@ -189,7 +189,7 @@ class DayDetailActivity : AppCompatActivity() {
             hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
         }
         binding.textSummary.text = buildString {
-            appendLine("Source: Schrittji projection")
+            appendLine("Source: Preview projection")
             appendLine("Generated minute records: ${slices.size}")
             appendLine("Projected total steps: ${totalSteps.formatThousands()}")
             appendLine(getString(R.string.day_detail_hc_exercise_count, hcSessions.size))
@@ -260,9 +260,7 @@ class DayDetailActivity : AppCompatActivity() {
             if (workout.type != WorkoutType.MINDFULNESS) {
                 appendLine(String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0))
             }
-            if (workout.notes.isNotBlank()) {
-                appendLine(workout.notes)
-            }
+            workout.notes?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
             append(getString(R.string.workout_info_source_projected))
         }
     }
