@@ -1,6 +1,7 @@
 package dev.digitaldomi.schrittji.health
 
 import android.content.Context
+import android.util.Log
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
@@ -38,6 +39,7 @@ data class HealthConnectStepRecordEntry(
 data class HealthConnectExerciseSession(
     val start: ZonedDateTime,
     val end: ZonedDateTime,
+    /** Classified workout type; [WorkoutType.RUNNING] is used when HC returns an unmapped type id. */
     val type: WorkoutType,
     val title: String?,
     val notes: String?,
@@ -50,6 +52,12 @@ data class HealthConnectStepDaySummary(
     val date: LocalDate,
     val totalSteps: Long,
     val recordCount: Int
+)
+
+/** Result of reading exercise sessions for a calendar day (may include [queryError] if HC read failed). */
+data class ExerciseSessionsReadResult(
+    val sessions: List<HealthConnectExerciseSession>,
+    val queryError: String? = null
 )
 
 data class HealthConnectStepsSnapshot(
@@ -276,49 +284,77 @@ class HealthConnectGateway(private val context: Context) {
     }
 
     suspend fun readExerciseSessionsForDate(date: LocalDate): List<HealthConnectExerciseSession> {
-        val allSessions = mutableListOf<HealthConnectExerciseSession>()
-        var pageToken: String? = null
-        val start = date.atStartOfDay(zoneId).toInstant()
-        val end = date.plusDays(1).atStartOfDay(zoneId).toInstant()
+        return readExerciseSessionsForDateResult(date).sessions
+    }
 
-        do {
-            val response = healthConnectClient.readRecords(
-                ReadRecordsRequest(
-                    recordType = ExerciseSessionRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(start, end),
-                    ascendingOrder = true,
-                    pageSize = 1_000,
-                    pageToken = pageToken
+    /**
+     * Reads [ExerciseSessionRecord]s that overlap [date] in [zoneId].
+     * Uses a **widened** HC query window (±1 calendar day) then filters by overlap, so sessions
+     * are not missed when stored instants sit near zone boundaries or HC uses exclusive ranges.
+     */
+    suspend fun readExerciseSessionsForDateResult(date: LocalDate): ExerciseSessionsReadResult {
+        val dayStart = date.atStartOfDay(zoneId)
+        val dayEnd = date.plusDays(1).atStartOfDay(zoneId)
+        val queryStart = dayStart.minusDays(1).toInstant()
+        val queryEnd = dayEnd.plusDays(1).toInstant()
+
+        return try {
+            val allSessions = mutableListOf<HealthConnectExerciseSession>()
+            var pageToken: String? = null
+
+            do {
+                val response = healthConnectClient.readRecords(
+                    ReadRecordsRequest(
+                        recordType = ExerciseSessionRecord::class,
+                        timeRangeFilter = TimeRangeFilter.between(queryStart, queryEnd),
+                        ascendingOrder = true,
+                        pageSize = 1_000,
+                        pageToken = pageToken
+                    )
                 )
-            )
-            allSessions += response.records.mapNotNull { record ->
-                val pkg = record.metadata.dataOrigin.packageName.orEmpty()
-                val mapped = mapExerciseTypeToWorkoutType(
-                    exerciseType = record.exerciseType,
-                    title = record.title,
-                    notes = record.notes
-                ) ?: return@mapNotNull null
-                HealthConnectExerciseSession(
-                    start = ZonedDateTime.ofInstant(record.startTime, zoneId),
-                    end = ZonedDateTime.ofInstant(record.endTime, zoneId),
-                    type = mapped,
-                    title = record.title,
-                    notes = record.notes,
-                    dataOriginPackage = pkg,
-                    isFromSchrittji = pkg == context.packageName
-                )
+                allSessions += response.records.map { record ->
+                    val pkg = record.metadata.dataOrigin.packageName.orEmpty()
+                    val zStart = ZonedDateTime.ofInstant(record.startTime, zoneId)
+                    val zEnd = ZonedDateTime.ofInstant(record.endTime, zoneId)
+                    val mapped = mapExerciseTypeToWorkoutType(
+                        exerciseType = record.exerciseType,
+                        title = record.title,
+                        notes = record.notes
+                    )
+                    HealthConnectExerciseSession(
+                        start = zStart,
+                        end = zEnd,
+                        type = mapped,
+                        title = record.title,
+                        notes = record.notes,
+                        dataOriginPackage = pkg,
+                        isFromSchrittji = pkg == context.packageName
+                    )
+                }
+                pageToken = response.pageToken
+            } while (pageToken != null)
+
+            val overlapping = allSessions.filter { session ->
+                session.start.isBefore(dayEnd) && session.end.isAfter(dayStart)
             }
-            pageToken = response.pageToken
-        } while (pageToken != null)
-
-        return allSessions.sortedBy { it.start.toInstant() }
+            ExerciseSessionsReadResult(
+                sessions = overlapping.sortedBy { it.start.toInstant() },
+                queryError = null
+            )
+        } catch (e: Exception) {
+            Log.e("SchrittjiHC", "readExerciseSessionsForDate failed for $date", e)
+            ExerciseSessionsReadResult(
+                sessions = emptyList(),
+                queryError = e.message ?: e.javaClass.simpleName
+            )
+        }
     }
 
     private fun mapExerciseTypeToWorkoutType(
         exerciseType: Int,
         title: String?,
         notes: String?
-    ): WorkoutType? {
+    ): WorkoutType {
         when (exerciseType) {
             ExerciseSessionRecord.EXERCISE_TYPE_RUNNING,
             ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL -> return WorkoutType.RUNNING

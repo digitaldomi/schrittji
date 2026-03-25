@@ -223,16 +223,17 @@ class MainActivity : AppCompatActivity() {
         var hcMindfulness = 0
         var projectedCardio = 0
         var projectedMindfulness = 0
+        var exerciseReadError: String? = null
 
         for (i in 0..6) {
             val date = weekStart.plusDays(i.toLong())
             val label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2)
             val detail = simulationCoordinator.projectDayDetail(config, date)
-            val hcSessions = try {
-                healthConnectGateway.readExerciseSessionsForDate(date)
-            } catch (_: Exception) {
-                emptyList()
+            val hcResult = healthConnectGateway.readExerciseSessionsForDateResult(date)
+            if (exerciseReadError == null && hcResult.queryError != null) {
+                exerciseReadError = hcResult.queryError
             }
+            val hcSessions = hcResult.sessions
             val projectedPlans = detail.workouts.filter { plan ->
                 hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
             }
@@ -287,6 +288,10 @@ class MainActivity : AppCompatActivity() {
                     projectedMindfulness
                 )
             )
+            exerciseReadError?.let {
+                appendLine()
+                append(getString(R.string.summary_exercise_read_failed, it))
+            }
             latestSnapshot?.latestEnd?.let {
                 append("Latest Health Connect end: ${it.format(formatter)}")
             }
@@ -304,11 +309,8 @@ class MainActivity : AppCompatActivity() {
         val existingEntries = latestSnapshot?.records
             ?.filter { it.start.toLocalDate() == selectedProjectionDate }
             .orEmpty()
-        val exerciseSessions = try {
-            healthConnectGateway.readExerciseSessionsForDate(selectedProjectionDate)
-        } catch (_: Exception) {
-            emptyList()
-        }
+        val hcExerciseResult = healthConnectGateway.readExerciseSessionsForDateResult(selectedProjectionDate)
+        val exerciseSessions = hcExerciseResult.sessions
         val projectedWorkoutsOnly = detail.workouts.filter { plan ->
             exerciseSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
         }
@@ -358,7 +360,8 @@ class MainActivity : AppCompatActivity() {
             existingEntries = existingEntries,
             detail = detail,
             exerciseSessions = exerciseSessions,
-            projectedWorkoutsOnly = projectedWorkoutsOnly
+            projectedWorkoutsOnly = projectedWorkoutsOnly,
+            hcExerciseReadError = hcExerciseResult.queryError
         )
     }
 
@@ -366,7 +369,8 @@ class MainActivity : AppCompatActivity() {
         existingEntries: List<dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry>,
         detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail,
         exerciseSessions: List<dev.digitaldomi.schrittji.health.HealthConnectExerciseSession>,
-        projectedWorkoutsOnly: List<WorkoutPlan>
+        projectedWorkoutsOnly: List<WorkoutPlan>,
+        hcExerciseReadError: String?
     ): String {
         return buildString {
             append("Existing ")
@@ -374,6 +378,9 @@ class MainActivity : AppCompatActivity() {
             append(" · Projected ")
             appendLine(detail.totalSteps.formatThousands())
             appendLine("${detail.slices.size} minute records")
+            hcExerciseReadError?.let {
+                appendLine(getString(R.string.summary_exercise_read_failed, it))
+            }
             if (exerciseSessions.isNotEmpty()) {
                 appendLine(getString(R.string.summary_recorded_header))
                 exerciseSessions.forEach { session ->
@@ -403,9 +410,9 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
-            if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isEmpty()) {
+            if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isEmpty() && hcExerciseReadError == null) {
                 append(getString(R.string.summary_no_workouts))
-            } else if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isNotEmpty()) {
+            } else if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isNotEmpty() && hcExerciseReadError == null) {
                 appendLine()
                 append(getString(R.string.main_day_hc_workouts_missing_hint))
             }

@@ -101,12 +101,8 @@ class DayDetailActivity : AppCompatActivity() {
                 when (source) {
                     DayDetailSource.HEALTH_CONNECT -> {
                         val entries = healthConnectGateway.readStepEntriesForDate(selectedDate)
-                        val exercises = try {
-                            healthConnectGateway.readExerciseSessionsForDate(selectedDate)
-                        } catch (_: Exception) {
-                            emptyList()
-                        }
-                        renderHealthConnectDay(entries, exercises)
+                        val exResult = healthConnectGateway.readExerciseSessionsForDateResult(selectedDate)
+                        renderHealthConnectDay(entries, exResult.sessions, exResult.queryError)
                     }
 
                     DayDetailSource.PROJECTION -> {
@@ -114,12 +110,8 @@ class DayDetailActivity : AppCompatActivity() {
                             simulationCoordinator.loadConfig(),
                             selectedDate
                         )
-                        val exercises = try {
-                            healthConnectGateway.readExerciseSessionsForDate(selectedDate)
-                        } catch (_: Exception) {
-                            emptyList()
-                        }
-                        renderProjectionDay(detail, exercises)
+                        val exResult = healthConnectGateway.readExerciseSessionsForDateResult(selectedDate)
+                        renderProjectionDay(detail, exResult.sessions, exResult.queryError)
                     }
                 }
             } catch (exception: Exception) {
@@ -134,15 +126,19 @@ class DayDetailActivity : AppCompatActivity() {
 
     private fun renderHealthConnectDay(
         entries: List<HealthConnectStepRecordEntry>,
-        exercises: List<HealthConnectExerciseSession>
+        exercises: List<HealthConnectExerciseSession>,
+        exerciseReadError: String?
     ) {
         val totalSteps = entries.sumOf { it.count }
         binding.textSummary.text = buildString {
             appendLine("Source: Health Connect")
             appendLine("Visible records: ${entries.size}")
             appendLine("Exercise sessions: ${exercises.size}")
+            exerciseReadError?.let {
+                appendLine(getString(R.string.hc_day_exercise_read_error, it))
+            }
             append("Total steps: ${totalSteps.formatThousands()}")
-            if (exercises.isEmpty()) {
+            if (exercises.isEmpty() && exerciseReadError == null) {
                 appendLine()
                 appendLine()
                 append(getString(R.string.hc_day_exercise_zero_hint))
@@ -183,7 +179,8 @@ class DayDetailActivity : AppCompatActivity() {
 
     private fun renderProjectionDay(
         detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail,
-        hcSessions: List<HealthConnectExerciseSession>
+        hcSessions: List<HealthConnectExerciseSession>,
+        exerciseReadError: String?
     ) {
         val slices = detail.slices
         val totalSteps = slices.sumOf { it.count }
@@ -195,6 +192,9 @@ class DayDetailActivity : AppCompatActivity() {
             appendLine("Generated minute records: ${slices.size}")
             appendLine("Projected total steps: ${totalSteps.formatThousands()}")
             appendLine(getString(R.string.day_detail_hc_exercise_count, hcSessions.size))
+            exerciseReadError?.let {
+                appendLine(getString(R.string.hc_day_exercise_read_error, it))
+            }
         }
         binding.textEntries.text = if (slices.isEmpty()) {
             getString(R.string.day_detail_empty)
