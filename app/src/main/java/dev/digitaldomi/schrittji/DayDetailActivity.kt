@@ -71,7 +71,8 @@ class DayDetailActivity : AppCompatActivity() {
             val title = when {
                 info.title.isNotBlank() -> info.title
                 info.kind == TimelineWorkoutKind.RUNNING -> getString(R.string.workout_title_running)
-                else -> getString(R.string.workout_title_cycling)
+                info.kind == TimelineWorkoutKind.CYCLING -> getString(R.string.workout_title_cycling)
+                else -> getString(R.string.workout_title_mindfulness)
             }
             MaterialAlertDialogBuilder(this)
                 .setTitle(title)
@@ -136,7 +137,7 @@ class DayDetailActivity : AppCompatActivity() {
         binding.textSummary.text = buildString {
             appendLine("Source: Health Connect")
             appendLine("Visible records: ${entries.size}")
-            appendLine("Exercise sessions (run/bike): ${exercises.size}")
+            appendLine("Exercise sessions: ${exercises.size}")
             append("Total steps: ${totalSteps.formatThousands()}")
             if (exercises.isEmpty()) {
                 appendLine()
@@ -220,6 +221,7 @@ class DayDetailActivity : AppCompatActivity() {
         return when (type) {
             WorkoutType.RUNNING -> getString(R.string.workout_title_running)
             WorkoutType.CYCLING -> getString(R.string.workout_title_cycling)
+            WorkoutType.MINDFULNESS -> getString(R.string.workout_title_mindfulness)
         }
     }
 
@@ -231,7 +233,9 @@ class DayDetailActivity : AppCompatActivity() {
                     workout.end.withZoneSameInstant(zoneId).format(timeFormatter)
             )
             appendLine("Duration: $duration min")
-            appendLine(String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0))
+            if (workout.type != WorkoutType.MINDFULNESS) {
+                appendLine(String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0))
+            }
             if (workout.notes.isNotBlank()) {
                 appendLine(workout.notes)
             }
@@ -268,5 +272,6 @@ private fun WorkoutType.toTimelineWorkoutKind(): TimelineWorkoutKind {
     return when (this) {
         WorkoutType.RUNNING -> TimelineWorkoutKind.RUNNING
         WorkoutType.CYCLING -> TimelineWorkoutKind.CYCLING
+        WorkoutType.MINDFULNESS -> TimelineWorkoutKind.MINDFULNESS
     }
 }

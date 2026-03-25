@@ -138,35 +138,44 @@ class HealthConnectGateway(private val context: Context) {
             val exerciseType = when (workout.type) {
                 WorkoutType.RUNNING -> ExerciseSessionRecord.EXERCISE_TYPE_RUNNING
                 WorkoutType.CYCLING -> ExerciseSessionRecord.EXERCISE_TYPE_BIKING
+                WorkoutType.MINDFULNESS -> ExerciseSessionRecord.EXERCISE_TYPE_GUIDED_BREATHING
             }
-            listOf<Record>(
-                ExerciseSessionRecord(
-                    startTime = workout.start.toInstant(),
-                    startZoneOffset = workout.start.offset,
-                    endTime = workout.end.toInstant(),
-                    endZoneOffset = workout.end.offset,
-                    metadata = metadata,
-                    exerciseType = exerciseType,
-                    title = workout.title,
-                    notes = workout.notes
-                ),
-                DistanceRecord(
-                    startTime = workout.start.toInstant(),
-                    startZoneOffset = workout.start.offset,
-                    endTime = workout.end.toInstant(),
-                    endZoneOffset = workout.end.offset,
-                    distance = Length.meters(workout.distanceMeters),
-                    metadata = metadata
-                ),
-                TotalCaloriesBurnedRecord(
-                    startTime = workout.start.toInstant(),
-                    startZoneOffset = workout.start.offset,
-                    endTime = workout.end.toInstant(),
-                    endZoneOffset = workout.end.offset,
-                    energy = Energy.kilocalories(workout.kilocalories),
-                    metadata = metadata
+            buildList {
+                add(
+                    ExerciseSessionRecord(
+                        startTime = workout.start.toInstant(),
+                        startZoneOffset = workout.start.offset,
+                        endTime = workout.end.toInstant(),
+                        endZoneOffset = workout.end.offset,
+                        metadata = metadata,
+                        exerciseType = exerciseType,
+                        title = workout.title,
+                        notes = workout.notes
+                    )
                 )
-            )
+                if (workout.distanceMeters > 0.5) {
+                    add(
+                        DistanceRecord(
+                            startTime = workout.start.toInstant(),
+                            startZoneOffset = workout.start.offset,
+                            endTime = workout.end.toInstant(),
+                            endZoneOffset = workout.end.offset,
+                            distance = Length.meters(workout.distanceMeters),
+                            metadata = metadata
+                        )
+                    )
+                }
+                add(
+                    TotalCaloriesBurnedRecord(
+                        startTime = workout.start.toInstant(),
+                        startZoneOffset = workout.start.offset,
+                        endTime = workout.end.toInstant(),
+                        endZoneOffset = workout.end.offset,
+                        energy = Energy.kilocalories(workout.kilocalories),
+                        metadata = metadata
+                    )
+                )
+            }
         }
 
         records.chunked(300).forEach { chunk ->
@@ -297,6 +306,10 @@ class HealthConnectGateway(private val context: Context) {
         return when (exerciseType) {
             ExerciseSessionRecord.EXERCISE_TYPE_RUNNING -> WorkoutType.RUNNING
             ExerciseSessionRecord.EXERCISE_TYPE_BIKING -> WorkoutType.CYCLING
+            ExerciseSessionRecord.EXERCISE_TYPE_GUIDED_BREATHING,
+            ExerciseSessionRecord.EXERCISE_TYPE_YOGA,
+            ExerciseSessionRecord.EXERCISE_TYPE_PILATES,
+            ExerciseSessionRecord.EXERCISE_TYPE_STRETCHING -> WorkoutType.MINDFULNESS
             else -> null
         }
     }

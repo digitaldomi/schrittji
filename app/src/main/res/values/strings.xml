@@ -7,6 +7,8 @@
     <string name="enable_daily_steps">Generate daily step totals</string>
     <string name="enable_running_workouts">Running workouts</string>
     <string name="enable_cycling_workouts">Cycling workouts</string>
+    <string name="mindfulness_workouts">Mindfulness</string>
+    <string name="enable_mindfulness_workouts">Mindfulness sessions</string>
     <string name="background_service_title">Background service</string>
     <string name="background_service_interval">Syncs about every 15 minutes when enabled.</string>
     <string name="open_health_connect">Open Health Connect</string>
@@ -32,8 +34,11 @@
     <string name="legend_projected_short">Projected</string>
     <string name="legend_workout_hc_short">HC exercise</string>
     <string name="legend_workout_proj_short">Planned</string>
+    <string name="legend_workout_hc_mindfulness_short">HC calm</string>
+    <string name="legend_workout_proj_mindfulness_short">Planned calm</string>
     <string name="week_summary_steps_range">Steps per day (existing + projected): avg %1$s, min %2$s, max %3$s</string>
     <string name="week_summary_workouts">Workouts this week: %1$d recorded (Health Connect), %2$d projected</string>
+    <string name="week_summary_workouts_breakdown">Sessions this week — recorded: %1$d run/bike, %2$d mindfulness · projected: %3$d run/bike, %4$d mindfulness</string>
     <string name="legend_existing">Existing Health Connect data</string>
     <string name="legend_projected">Projected Schrittji data</string>
     <string name="legend_workout">Workouts</string>
@@ -74,6 +79,7 @@
     <string name="day_detail_empty">No step entries exist for this day.</string>
     <string name="workout_title_running">Running</string>
     <string name="workout_title_cycling">Cycling</string>
+    <string name="workout_title_mindfulness">Mindfulness</string>
     <string name="workout_info_source_projected">Projected Schrittji workout</string>
     <string name="hc_day_exercise_zero_hint">Run/bike sessions here are Exercise records in Health Connect. The main Day chart can still show orange projected workouts from Schrittji before they are written to Health Connect.</string>
     <string name="main_day_hc_workouts_missing_hint">No run/bike exercise sessions in Health Connect for this day — orange on the chart is Schrittji projection only.</string>

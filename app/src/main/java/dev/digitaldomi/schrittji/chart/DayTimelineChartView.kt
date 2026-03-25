@@ -25,7 +25,15 @@ enum class TimelineSeries {
 
 enum class TimelineWorkoutKind {
     RUNNING,
-    CYCLING
+    CYCLING,
+    MINDFULNESS
+}
+
+private enum class WorkoutOverlayCategory {
+    CARDIO_RECORDED,
+    CARDIO_PROJECTED,
+    MINDFULNESS_RECORDED,
+    MINDFULNESS_PROJECTED
 }
 
 data class WorkoutTapInfo(
@@ -58,6 +66,8 @@ class DayTimelineChartView @JvmOverloads constructor(
     private val existingColor = context.getColor(R.color.chart_existing)
     private val workoutColorRecorded = context.getColor(R.color.chart_workout)
     private val workoutColorProjected = context.getColor(R.color.chart_workout_projected)
+    private val workoutColorMindfulnessRecorded = context.getColor(R.color.chart_workout_mindfulness)
+    private val workoutColorMindfulnessProjected = context.getColor(R.color.chart_workout_mindfulness_projected)
     private val textColor = context.getColor(R.color.brand_text)
     private val axisColor = context.getColor(R.color.panel_stroke)
     private val bucketCount = 24
@@ -92,6 +102,16 @@ class DayTimelineChartView @JvmOverloads constructor(
         color = workoutColorProjected
         alpha = 200
     }
+    private val workoutStripPaintMindfulnessRecorded = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutColorMindfulnessRecorded
+        alpha = 220
+    }
+    private val workoutStripPaintMindfulnessProjected = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutColorMindfulnessProjected
+        alpha = 200
+    }
     private val workoutUnderlayRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = context.getColor(R.color.chart_workout_underlay)
@@ -99,6 +119,14 @@ class DayTimelineChartView @JvmOverloads constructor(
     private val workoutUnderlayProjectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = context.getColor(R.color.chart_workout_underlay_projected)
+    }
+    private val workoutUnderlayMindfulnessRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = context.getColor(R.color.chart_workout_underlay_mindfulness)
+    }
+    private val workoutUnderlayMindfulnessProjectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = context.getColor(R.color.chart_workout_underlay_mindfulness_projected)
     }
     private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -124,6 +152,7 @@ class DayTimelineChartView @JvmOverloads constructor(
 
     private val runDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_run)?.mutate()
     private val cycleDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_cycle)?.mutate()
+    private val mindfulnessDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_mindfulness)?.mutate()
 
     private var workoutTapListener: ((WorkoutTapInfo) -> Unit)? = null
 
@@ -223,8 +252,7 @@ class DayTimelineChartView @JvmOverloads constructor(
             val xEnd = minuteToX(overlay.endMinute, chartLeft, chartWidth)
             val left = min(xStart, xEnd)
             val right = max(xStart, xEnd).coerceAtLeast(left + (3f * density))
-            val underPaint = if (overlay.isProjected) workoutUnderlayProjectedPaint else workoutUnderlayRecordedPaint
-            canvas.drawRect(left, chartTop, right, chartBottom, underPaint)
+            canvas.drawRect(left, chartTop, right, chartBottom, underlayPaintFor(overlay.category))
         }
 
         buckets.forEachIndexed { index, bucket ->
@@ -292,12 +320,11 @@ class DayTimelineChartView @JvmOverloads constructor(
             val xEnd = minuteToX(overlay.endMinute, chartLeft, chartWidth)
             val left = min(xStart, xEnd)
             val right = max(xStart, xEnd).coerceAtLeast(left + (3f * density))
-            val paint = if (overlay.isProjected) workoutStripPaintProjected else workoutStripPaint
             canvas.drawRoundRect(
                 RectF(left, workoutStripTop, right, workoutStripBottom),
                 3f * density,
                 3f * density,
-                paint
+                stripPaintFor(overlay.category)
             )
         }
 
@@ -320,9 +347,10 @@ class DayTimelineChartView @JvmOverloads constructor(
             val drawable = when (overlay.kind) {
                 TimelineWorkoutKind.RUNNING -> runDrawable
                 TimelineWorkoutKind.CYCLING -> cycleDrawable
+                TimelineWorkoutKind.MINDFULNESS -> mindfulnessDrawable
             }
             if (drawable != null) {
-                val tint = if (overlay.isProjected) workoutColorProjected else workoutColorRecorded
+                val tint = iconTintFor(overlay.category)
                 DrawableCompat.setTint(drawable, tint)
                 drawable.bounds = Rect(iconLeft, iconTopI, iconRight, iconBottom)
                 drawable.draw(canvas)
@@ -502,15 +530,51 @@ class DayTimelineChartView @JvmOverloads constructor(
         return entries.mapNotNull { entry ->
             if (entry.series != TimelineSeries.WORKOUT) return@mapNotNull null
             val kind = entry.workoutKind ?: return@mapNotNull null
+            val category = when (kind) {
+                TimelineWorkoutKind.MINDFULNESS ->
+                    if (entry.workoutIsProjected) WorkoutOverlayCategory.MINDFULNESS_PROJECTED
+                    else WorkoutOverlayCategory.MINDFULNESS_RECORDED
+                else ->
+                    if (entry.workoutIsProjected) WorkoutOverlayCategory.CARDIO_PROJECTED
+                    else WorkoutOverlayCategory.CARDIO_RECORDED
+            }
             WorkoutOverlay(
                 startMinute = entry.startMinute.coerceIn(0, 1439),
                 endMinute = entry.endMinute.coerceIn(entry.startMinute + 1, 1440),
                 midpointMinute = ((entry.startMinute + entry.endMinute) / 2).coerceIn(0, 1440),
                 kind = kind,
+                category = category,
                 title = entry.workoutTitle.orEmpty(),
                 detail = entry.workoutDetail.orEmpty(),
                 isProjected = entry.workoutIsProjected
             )
+        }
+    }
+
+    private fun underlayPaintFor(category: WorkoutOverlayCategory): Paint {
+        return when (category) {
+            WorkoutOverlayCategory.CARDIO_RECORDED -> workoutUnderlayRecordedPaint
+            WorkoutOverlayCategory.CARDIO_PROJECTED -> workoutUnderlayProjectedPaint
+            WorkoutOverlayCategory.MINDFULNESS_RECORDED -> workoutUnderlayMindfulnessRecordedPaint
+            WorkoutOverlayCategory.MINDFULNESS_PROJECTED -> workoutUnderlayMindfulnessProjectedPaint
+        }
+    }
+
+    private fun stripPaintFor(category: WorkoutOverlayCategory): Paint {
+        return when (category) {
+            WorkoutOverlayCategory.CARDIO_RECORDED -> workoutStripPaint
+            WorkoutOverlayCategory.CARDIO_PROJECTED -> workoutStripPaintProjected
+            WorkoutOverlayCategory.MINDFULNESS_RECORDED -> workoutStripPaintMindfulnessRecorded
+            WorkoutOverlayCategory.MINDFULNESS_PROJECTED -> workoutStripPaintMindfulnessProjected
+        }
+    }
+
+    private fun iconTintFor(category: WorkoutOverlayCategory): Int {
+        return when (category) {
+            WorkoutOverlayCategory.CARDIO_RECORDED -> workoutColorRecorded
+            WorkoutOverlayCategory.CARDIO_PROJECTED -> workoutColorProjected
+            WorkoutOverlayCategory.MINDFULNESS_RECORDED -> workoutColorMindfulnessRecorded
+            WorkoutOverlayCategory.MINDFULNESS_PROJECTED -> workoutColorMindfulnessProjected
         }
     }
 }
@@ -520,6 +584,7 @@ private data class WorkoutOverlay(
     val endMinute: Int,
     val midpointMinute: Int,
     val kind: TimelineWorkoutKind,
+    val category: WorkoutOverlayCategory,
     val title: String,
     val detail: String,
     val isProjected: Boolean

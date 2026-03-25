@@ -127,7 +127,8 @@ class MainActivity : AppCompatActivity() {
             val title = when {
                 info.title.isNotBlank() -> info.title
                 info.kind == TimelineWorkoutKind.RUNNING -> getString(R.string.workout_title_running)
-                else -> getString(R.string.workout_title_cycling)
+                info.kind == TimelineWorkoutKind.CYCLING -> getString(R.string.workout_title_cycling)
+                else -> getString(R.string.workout_title_mindfulness)
             }
             MaterialAlertDialogBuilder(this)
                 .setTitle(title)
@@ -217,14 +218,17 @@ class MainActivity : AppCompatActivity() {
 
         val dayMap = latestSnapshot?.daySummaries?.associateBy { it.date }.orEmpty()
         val points = mutableListOf<DualSeriesBarPoint>()
-        var hcWorkouts = 0
-        var projectedWorkouts = 0
+        var hcCardio = 0
+        var hcMindfulness = 0
+        var projectedCardio = 0
+        var projectedMindfulness = 0
 
         for (i in 0..6) {
             val date = weekStart.plusDays(i.toLong())
             val label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2)
             val detail = simulationCoordinator.projectDayDetail(config, date)
-            projectedWorkouts += detail.workouts.size
+            projectedCardio += detail.workouts.count { it.type != WorkoutType.MINDFULNESS }
+            projectedMindfulness += detail.workouts.count { it.type == WorkoutType.MINDFULNESS }
 
             val hcSessions = if (healthConnectGateway.hasExerciseReadPermission()) {
                 try {
@@ -235,7 +239,8 @@ class MainActivity : AppCompatActivity() {
             } else {
                 emptyList()
             }
-            hcWorkouts += hcSessions.size
+            hcCardio += hcSessions.count { it.type != WorkoutType.MINDFULNESS }
+            hcMindfulness += hcSessions.count { it.type == WorkoutType.MINDFULNESS }
 
             val existing = when {
                 date.isBefore(today) -> (dayMap[date]?.totalSteps ?: 0L).toFloat()
@@ -252,8 +257,10 @@ class MainActivity : AppCompatActivity() {
                     label = label,
                     existingValue = existing,
                     projectedValue = projected,
-                    hasRecordedWorkout = hcSessions.isNotEmpty(),
-                    hasProjectedWorkout = detail.workouts.isNotEmpty()
+                    hasRecordedCardioWorkout = hcSessions.any { it.type != WorkoutType.MINDFULNESS },
+                    hasRecordedMindfulnessWorkout = hcSessions.any { it.type == WorkoutType.MINDFULNESS },
+                    hasProjectedCardioWorkout = detail.workouts.any { it.type != WorkoutType.MINDFULNESS },
+                    hasProjectedMindfulnessWorkout = detail.workouts.any { it.type == WorkoutType.MINDFULNESS }
                 )
             )
         }
@@ -273,7 +280,13 @@ class MainActivity : AppCompatActivity() {
                 )
             )
             appendLine(
-                getString(R.string.week_summary_workouts, hcWorkouts, projectedWorkouts)
+                getString(
+                    R.string.week_summary_workouts_breakdown,
+                    hcCardio,
+                    hcMindfulness,
+                    projectedCardio,
+                    projectedMindfulness
+                )
             )
             latestSnapshot?.latestEnd?.let {
                 append("Latest Health Connect end: ${it.format(formatter)}")
@@ -375,8 +388,13 @@ class MainActivity : AppCompatActivity() {
                 detail.workouts.forEach { workout ->
                     val dur = ChronoUnit.MINUTES.between(workout.start, workout.end).coerceAtLeast(1)
                     val stepsInWorkout = sumStepsInWindow(detail.slices, workout.start, workout.end)
+                    val distancePart = if (workout.type == WorkoutType.MINDFULNESS) {
+                        ""
+                    } else {
+                        " · ~${stepsInWorkout.formatThousands()} st · ${String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0)}"
+                    }
                     appendLine(
-                        "· ${workout.type.label()} ${workout.start.format(workoutTimeFormatter)}–${workout.end.format(workoutTimeFormatter)} · ${dur} min · ~${stepsInWorkout.formatThousands()} st · ${String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0)}"
+                        "· ${workout.type.label()} ${workout.start.format(workoutTimeFormatter)}–${workout.end.format(workoutTimeFormatter)} · ${dur} min$distancePart"
                     )
                 }
             }
@@ -402,12 +420,14 @@ class MainActivity : AppCompatActivity() {
     private fun WorkoutType.label(): String = when (this) {
         WorkoutType.RUNNING -> getString(R.string.workout_title_running)
         WorkoutType.CYCLING -> getString(R.string.workout_title_cycling)
+        WorkoutType.MINDFULNESS -> getString(R.string.workout_title_mindfulness)
     }
 
     private fun defaultWorkoutTitle(type: WorkoutType): String {
         return when (type) {
             WorkoutType.RUNNING -> getString(R.string.workout_title_running)
             WorkoutType.CYCLING -> getString(R.string.workout_title_cycling)
+            WorkoutType.MINDFULNESS -> getString(R.string.workout_title_mindfulness)
         }
     }
 
@@ -418,7 +438,9 @@ class MainActivity : AppCompatActivity() {
                 "${workout.start.format(workoutTimeFormatter)}–${workout.end.format(workoutTimeFormatter)}"
             )
             appendLine("Duration: $duration min")
-            appendLine(String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0))
+            if (workout.type != WorkoutType.MINDFULNESS) {
+                appendLine(String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0))
+            }
             if (workout.notes.isNotBlank()) {
                 appendLine(workout.notes)
             }
@@ -495,6 +517,7 @@ private fun WorkoutType.toTimelineWorkoutKind(): TimelineWorkoutKind {
     return when (this) {
         WorkoutType.RUNNING -> TimelineWorkoutKind.RUNNING
         WorkoutType.CYCLING -> TimelineWorkoutKind.CYCLING
+        WorkoutType.MINDFULNESS -> TimelineWorkoutKind.MINDFULNESS
     }
 }
 

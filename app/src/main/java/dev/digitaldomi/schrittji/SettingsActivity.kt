@@ -115,6 +115,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.switchDailySteps.isChecked = config.dailyStepsEnabled
         binding.switchRunningEnabled.isChecked = config.runningEnabled
         binding.switchCyclingEnabled.isChecked = config.cyclingEnabled
+        binding.switchMindfulnessEnabled.isChecked = config.mindfulnessEnabled
         binding.editMinSteps.setText(config.minimumDailySteps.toString())
         binding.editMaxSteps.setText(config.maximumDailySteps.toString())
         binding.editRunningMinSessions.setText(config.runningMinSessionsPerWeek.toString())
@@ -125,6 +126,10 @@ class SettingsActivity : AppCompatActivity() {
         binding.editCyclingMaxSessions.setText(config.cyclingMaxSessionsPerWeek.toString())
         binding.editCyclingMinDuration.setText(config.cyclingMinDurationMinutes.toString())
         binding.editCyclingMaxDuration.setText(config.cyclingMaxDurationMinutes.toString())
+        binding.editMindfulnessMinSessions.setText(config.mindfulnessMinSessionsPerWeek.toString())
+        binding.editMindfulnessMaxSessions.setText(config.mindfulnessMaxSessionsPerWeek.toString())
+        binding.editMindfulnessMinDuration.setText(config.mindfulnessMinDurationMinutes.toString())
+        binding.editMindfulnessMaxDuration.setText(config.mindfulnessMaxDurationMinutes.toString())
     }
 
     private fun buildConfigFromInputs(): SimulationConfig? {
@@ -139,6 +144,10 @@ class SettingsActivity : AppCompatActivity() {
         val cyclingMaxSessions = binding.editCyclingMaxSessions.text?.toString()?.trim()?.toIntOrNull()
         val cyclingMinDuration = binding.editCyclingMinDuration.text?.toString()?.trim()?.toIntOrNull()
         val cyclingMaxDuration = binding.editCyclingMaxDuration.text?.toString()?.trim()?.toIntOrNull()
+        val mindfulnessMinSessions = binding.editMindfulnessMinSessions.text?.toString()?.trim()?.toIntOrNull()
+        val mindfulnessMaxSessions = binding.editMindfulnessMaxSessions.text?.toString()?.trim()?.toIntOrNull()
+        val mindfulnessMinDuration = binding.editMindfulnessMinDuration.text?.toString()?.trim()?.toIntOrNull()
+        val mindfulnessMaxDuration = binding.editMindfulnessMaxDuration.text?.toString()?.trim()?.toIntOrNull()
 
         if (minSteps == null || minSteps !in 1_000..30_000) {
             binding.inputMinSteps.error = "1,000 to 30,000."
@@ -160,6 +169,12 @@ class SettingsActivity : AppCompatActivity() {
         if (!validateDurationRange(binding.inputCyclingMinDuration, binding.inputCyclingMaxDuration, cyclingMinDuration, cyclingMaxDuration)) {
             return null
         }
+        if (!validateSessionRange(binding.inputMindfulnessMinSessions, binding.inputMindfulnessMaxSessions, mindfulnessMinSessions, mindfulnessMaxSessions, 0, 7)) {
+            return null
+        }
+        if (!validateDurationRange(binding.inputMindfulnessMinDuration, binding.inputMindfulnessMaxDuration, mindfulnessMinDuration, mindfulnessMaxDuration)) {
+            return null
+        }
 
         val current = simulationCoordinator.loadConfig()
         return current.copy(
@@ -169,6 +184,7 @@ class SettingsActivity : AppCompatActivity() {
             automationEnabled = binding.switchBackgroundService.isChecked,
             runningEnabled = binding.switchRunningEnabled.isChecked,
             cyclingEnabled = binding.switchCyclingEnabled.isChecked,
+            mindfulnessEnabled = binding.switchMindfulnessEnabled.isChecked,
             runningMinSessionsPerWeek = runningMinSessions!!,
             runningMaxSessionsPerWeek = runningMaxSessions!!,
             runningMinDurationMinutes = runningMinDuration!!,
@@ -176,7 +192,11 @@ class SettingsActivity : AppCompatActivity() {
             cyclingMinSessionsPerWeek = cyclingMinSessions!!,
             cyclingMaxSessionsPerWeek = cyclingMaxSessions!!,
             cyclingMinDurationMinutes = cyclingMinDuration!!,
-            cyclingMaxDurationMinutes = cyclingMaxDuration!!
+            cyclingMaxDurationMinutes = cyclingMaxDuration!!,
+            mindfulnessMinSessionsPerWeek = mindfulnessMinSessions!!,
+            mindfulnessMaxSessionsPerWeek = mindfulnessMaxSessions!!,
+            mindfulnessMinDurationMinutes = mindfulnessMinDuration!!,
+            mindfulnessMaxDurationMinutes = mindfulnessMaxDuration!!
         )
     }
 
@@ -221,7 +241,11 @@ class SettingsActivity : AppCompatActivity() {
             binding.inputCyclingMinSessions,
             binding.inputCyclingMaxSessions,
             binding.inputCyclingMinDuration,
-            binding.inputCyclingMaxDuration
+            binding.inputCyclingMaxDuration,
+            binding.inputMindfulnessMinSessions,
+            binding.inputMindfulnessMaxSessions,
+            binding.inputMindfulnessMinDuration,
+            binding.inputMindfulnessMaxDuration
         ).forEach { it.error = null }
     }
 

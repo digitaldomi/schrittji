@@ -14,8 +14,10 @@ data class DualSeriesBarPoint(
     val label: String,
     val existingValue: Float,
     val projectedValue: Float,
-    val hasRecordedWorkout: Boolean = false,
-    val hasProjectedWorkout: Boolean = false
+    val hasRecordedCardioWorkout: Boolean = false,
+    val hasRecordedMindfulnessWorkout: Boolean = false,
+    val hasProjectedCardioWorkout: Boolean = false,
+    val hasProjectedMindfulnessWorkout: Boolean = false
 )
 
 class DualSeriesBarChartView @JvmOverloads constructor(
@@ -28,6 +30,8 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     private val projectedColor = context.getColor(R.color.chart_projected)
     private val workoutUnderlayRecorded = context.getColor(R.color.chart_workout_underlay)
     private val workoutUnderlayProjected = context.getColor(R.color.chart_workout_underlay_projected)
+    private val workoutUnderlayMindfulnessRecorded = context.getColor(R.color.chart_workout_underlay_mindfulness)
+    private val workoutUnderlayMindfulnessProjected = context.getColor(R.color.chart_workout_underlay_mindfulness_projected)
     private val axisColor = context.getColor(R.color.panel_stroke)
     private val textColor = context.getColor(R.color.brand_text)
 
@@ -56,6 +60,14 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     private val underlayProjectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = workoutUnderlayProjected
+    }
+    private val underlayMindfulnessRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutUnderlayMindfulnessRecorded
+    }
+    private val underlayMindfulnessProjectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutUnderlayMindfulnessProjected
     }
 
     private var points: List<DualSeriesBarPoint> = emptyList()
@@ -103,22 +115,41 @@ class DualSeriesBarChartView @JvmOverloads constructor(
 
         points.forEachIndexed { index, point ->
             val slotLeft = chartLeft + slotWidth * index
-            if (point.hasRecordedWorkout) {
+            val q = slotWidth / 4f
+            if (point.hasRecordedCardioWorkout) {
                 canvas.drawRect(
                     slotLeft + 1f * density,
                     chartTop,
-                    slotLeft + slotWidth / 2f,
+                    slotLeft + q,
                     chartBottom,
                     underlayRecordedPaint
                 )
             }
-            if (point.hasProjectedWorkout) {
+            if (point.hasRecordedMindfulnessWorkout) {
                 canvas.drawRect(
-                    slotLeft + slotWidth / 2f,
+                    slotLeft + q,
+                    chartTop,
+                    slotLeft + 2f * q,
+                    chartBottom,
+                    underlayMindfulnessRecordedPaint
+                )
+            }
+            if (point.hasProjectedCardioWorkout) {
+                canvas.drawRect(
+                    slotLeft + 2f * q,
+                    chartTop,
+                    slotLeft + 3f * q,
+                    chartBottom,
+                    underlayProjectedPaint
+                )
+            }
+            if (point.hasProjectedMindfulnessWorkout) {
+                canvas.drawRect(
+                    slotLeft + 3f * q,
                     chartTop,
                     slotLeft + slotWidth - 1f * density,
                     chartBottom,
-                    underlayProjectedPaint
+                    underlayMindfulnessProjectedPaint
                 )
             }
         }

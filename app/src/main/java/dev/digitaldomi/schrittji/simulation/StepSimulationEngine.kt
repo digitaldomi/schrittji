@@ -24,7 +24,8 @@ data class DailyProjectedSteps(
 
 enum class WorkoutType {
     RUNNING,
-    CYCLING
+    CYCLING,
+    MINDFULNESS
 }
 
 data class WorkoutPlan(
@@ -61,6 +62,7 @@ private data class WeeklyRoutine(
     val lunchOutDays: Set<DayOfWeek>,
     val runningDays: Set<DayOfWeek>,
     val cyclingDays: Set<DayOfWeek>,
+    val mindfulnessDays: Set<DayOfWeek>,
     val errandDays: Set<DayOfWeek>,
     val weekendEarlyRiserDays: Set<DayOfWeek>,
     val weekendLongOutingDay: DayOfWeek,
@@ -407,6 +409,18 @@ class StepSimulationEngine {
 
         workouts.forEach { workout ->
             when (workout.type) {
+                WorkoutType.MINDFULNESS -> addWindow(
+                    windows = windows,
+                    start = workout.start,
+                    durationMinutes = ChronoUnit.MINUTES.between(workout.start, workout.end).toInt().coerceAtLeast(5),
+                    shareWeight = 0.012,
+                    minPace = 28,
+                    maxPace = 42,
+                    pauseChance = 0.45,
+                    continuity = 0.7,
+                    sleepTime = sleepTime
+                )
+
                 WorkoutType.RUNNING -> addWindow(
                     windows = windows,
                     start = workout.start,
@@ -752,7 +766,117 @@ class StepSimulationEngine {
             )
         }
 
+        if (config.mindfulnessEnabled && date.dayOfWeek in weeklyRoutine.mindfulnessDays) {
+            val duration = randomDuration(
+                config.mindfulnessMinDurationMinutes,
+                config.mindfulnessMaxDurationMinutes,
+                8,
+                45,
+                random
+            )
+            val blocked = workouts
+                .filter { it.start.isBefore(it.end) }
+                .map { it.start to it.end }
+                .sortedBy { it.first }
+            placeMindfulnessSession(
+                wakeTime = wakeTime,
+                sleepTime = sleepTime,
+                durationMinutes = duration,
+                blocked = blocked,
+                zone = wakeTime.zone,
+                date = date,
+                random = random
+            )?.let { (start, end) ->
+                workouts += WorkoutPlan(
+                    type = WorkoutType.MINDFULNESS,
+                    start = start,
+                    end = end,
+                    title = if (start.hour < 12) "Morning mindfulness" else "Evening mindfulness",
+                    notes = "Synthetic mindfulness session from Schrittji's weekly routine.",
+                    distanceMeters = 0.0,
+                    kilocalories = duration * random.nextDouble(1.2, 2.8)
+                )
+            }
+        }
+
         return workouts.filter { it.start.isBefore(it.end) }
+    }
+
+    private fun placeMindfulnessSession(
+        wakeTime: ZonedDateTime,
+        sleepTime: ZonedDateTime,
+        durationMinutes: Int,
+        blocked: List<Pair<ZonedDateTime, ZonedDateTime>>,
+        zone: java.time.ZoneId,
+        date: LocalDate,
+        random: Random
+    ): Pair<ZonedDateTime, ZonedDateTime>? {
+        val buffer = 15L
+        val dayStart = date.atStartOfDay(zone)
+        val dur = durationMinutes.toLong()
+
+        fun overlaps(aStart: ZonedDateTime, aEnd: ZonedDateTime): Boolean {
+            return blocked.any { (b, e) ->
+                aStart.isBefore(e.plusMinutes(buffer)) && aEnd.isAfter(b.minusMinutes(buffer))
+            }
+        }
+
+        fun latestEndBeforeNoon(): ZonedDateTime? =
+            blocked.filter { it.first.hour < 12 }.maxOfOrNull { it.second }
+
+        // Morning window: after wake + buffer, before noon, not overlapping run/cycle
+        val morningEarliest = maxOf(
+            wakeTime.plusMinutes(25),
+            latestEndBeforeNoon()?.plusMinutes(buffer) ?: wakeTime.plusMinutes(25)
+        )
+        val morningLatest = minOf(
+            dayStart.plusHours(12),
+            sleepTime.minusMinutes(dur + 20)
+        )
+
+        // Evening window: after 19:00 and after last blocking workout ends
+        val eveningEarliest = maxOf(
+            dayStart.plusHours(19),
+            blocked.maxOfOrNull { it.second }?.plusMinutes(buffer) ?: dayStart.plusHours(19)
+        )
+        val eveningLatest = sleepTime.minusMinutes(20)
+
+        val candidates = mutableListOf<Pair<ZonedDateTime, ZonedDateTime>>()
+
+        if (morningEarliest.plusMinutes(dur).isBefore(morningLatest) ||
+            morningEarliest.plusMinutes(dur) == morningLatest
+        ) {
+            val span = ChronoUnit.MINUTES.between(morningEarliest, morningLatest).toInt() - durationMinutes
+            if (span >= 0) {
+                val offset = if (span == 0) 0 else random.nextInt(0, span + 1)
+                val start = morningEarliest.plusMinutes(offset.toLong())
+                val end = start.plusMinutes(dur)
+                if (!end.isAfter(sleepTime) && !overlaps(start, end)) {
+                    candidates.add(start to end)
+                }
+            }
+        }
+
+        if (eveningEarliest.plusMinutes(dur).isBefore(eveningLatest) ||
+            eveningEarliest.plusMinutes(dur) == eveningLatest
+        ) {
+            val span = ChronoUnit.MINUTES.between(eveningEarliest, eveningLatest).toInt() - durationMinutes
+            if (span >= 0) {
+                val offset = if (span == 0) 0 else random.nextInt(0, span + 1)
+                val start = eveningEarliest.plusMinutes(offset.toLong())
+                val end = start.plusMinutes(dur)
+                if (!end.isAfter(sleepTime) && !overlaps(start, end)) {
+                    candidates.add(start to end)
+                }
+            }
+        }
+
+        return candidates.randomOrNull(random)
+    }
+
+    private fun <T> List<T>.randomOrNull(random: Random): T? {
+        if (isEmpty()) return null
+        return this[random.nextInt(size)]
     }
 
     private fun buildWeeklyRoutine(date: LocalDate, config: SimulationConfig): WeeklyRoutine {
@@ -779,6 +903,14 @@ class StepSimulationEngine {
         )
         val runningDays = runningPool.shuffled(random).take(runningSessionCount).toSet()
         val cyclingDays = cyclingPool.shuffled(random).take(cyclingSessionCount).toSet()
+        val mindfulnessPool = (DayOfWeek.entries.toSet() - runningDays - cyclingDays).toList()
+        val mindfulnessSessionCount = randomSessionCount(
+            config.mindfulnessMinSessionsPerWeek,
+            config.mindfulnessMaxSessionsPerWeek,
+            mindfulnessPool.size.coerceAtLeast(1),
+            random
+        )
+        val mindfulnessDays = mindfulnessPool.shuffled(random).take(mindfulnessSessionCount).toSet()
         val weekendEarlyRisers = buildSet {
             if (random.nextDouble() < 0.3) add(DayOfWeek.SATURDAY)
             if (random.nextDouble() < 0.2) add(DayOfWeek.SUNDAY)
@@ -788,6 +920,7 @@ class StepSimulationEngine {
             lunchOutDays = lunchOutDays,
             runningDays = runningDays,
             cyclingDays = cyclingDays,
+            mindfulnessDays = mindfulnessDays,
             errandDays = errandDays,
             weekendEarlyRiserDays = weekendEarlyRisers,
             weekendLongOutingDay = if (random.nextBoolean()) DayOfWeek.SATURDAY else DayOfWeek.SUNDAY,
