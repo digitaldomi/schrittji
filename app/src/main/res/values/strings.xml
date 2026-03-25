@@ -74,4 +74,6 @@
     <string name="workout_title_running">Running</string>
     <string name="workout_title_cycling">Cycling</string>
     <string name="workout_info_source_projected">Projected Schrittji workout</string>
+    <string name="hc_day_exercise_zero_hint">Run/bike sessions here are Exercise records in Health Connect. The main Day chart can still show orange projected workouts from Schrittji before they are written to Health Connect.</string>
+    <string name="main_day_hc_workouts_missing_hint">No run/bike exercise sessions in Health Connect for this day — orange on the chart is Schrittji projection only.</string>
 </resources>

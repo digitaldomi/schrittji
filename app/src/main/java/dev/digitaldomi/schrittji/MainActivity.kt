@@ -382,6 +382,9 @@ class MainActivity : AppCompatActivity() {
             }
             if (exerciseSessions.isEmpty() && detail.workouts.isEmpty()) {
                 append("No workouts.")
+            } else if (exerciseSessions.isEmpty() && detail.workouts.isNotEmpty()) {
+                appendLine()
+                append(getString(R.string.main_day_hc_workouts_missing_hint))
             }
         }
     }

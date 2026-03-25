@@ -138,6 +138,11 @@ class DayDetailActivity : AppCompatActivity() {
             appendLine("Visible records: ${entries.size}")
             appendLine("Exercise sessions (run/bike): ${exercises.size}")
             append("Total steps: ${totalSteps.formatThousands()}")
+            if (exercises.isEmpty()) {
+                appendLine()
+                appendLine()
+                append(getString(R.string.hc_day_exercise_zero_hint))
+            }
         }
         binding.textEntries.text = if (entries.isEmpty()) {
             getString(R.string.day_detail_empty)
