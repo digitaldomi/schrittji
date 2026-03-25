@@ -234,8 +234,13 @@ class MainActivity : AppCompatActivity() {
                 exerciseReadError = hcResult.queryError
             }
             val hcSessions = hcResult.sessions
-            val projectedPlans = detail.workouts.filter { plan ->
-                hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
+            val showFutureProjection = date.isAfter(today)
+            val projectedPlans = if (showFutureProjection) {
+                detail.workouts.filter { plan ->
+                    hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
+                }
+            } else {
+                emptyList()
             }
             projectedCardio += projectedPlans.count { it.type != WorkoutType.MINDFULNESS }
             projectedMindfulness += projectedPlans.count { it.type == WorkoutType.MINDFULNESS }
@@ -249,7 +254,6 @@ class MainActivity : AppCompatActivity() {
             }
             val projected = when {
                 date.isAfter(today) -> detail.totalSteps.toFloat()
-                date == today -> max(0L, detail.totalSteps - (dayMap[date]?.totalSteps ?: 0L)).toFloat()
                 else -> 0f
             }
             points.add(
@@ -307,13 +311,18 @@ class MainActivity : AppCompatActivity() {
         binding.buttonTodayProjectionDay.isEnabled = selectedProjectionDate != LocalDate.now()
 
         val detail = simulationCoordinator.projectDayDetail(config, selectedProjectionDate)
+        val showFutureProjection = selectedProjectionDate.isAfter(LocalDate.now())
         val existingEntries = latestSnapshot?.records
             ?.filter { it.start.toLocalDate() == selectedProjectionDate }
             .orEmpty()
         val hcExerciseResult = healthConnectGateway.readExerciseSessionsForDateResult(selectedProjectionDate)
         val exerciseSessions = hcExerciseResult.sessions
-        val projectedWorkoutsOnly = detail.workouts.filter { plan ->
-            exerciseSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
+        val projectedWorkoutsOnly = if (showFutureProjection) {
+            detail.workouts.filter { plan ->
+                exerciseSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
+            }
+        } else {
+            emptyList()
         }
         binding.chartProjectionDetail.submitEntries(
             existingEntries.map { entry ->
@@ -324,14 +333,18 @@ class MainActivity : AppCompatActivity() {
                     series = TimelineSeries.EXISTING,
                     emphasized = false
                 )
-            } + detail.slices.map { slice ->
-                TimelineBarEntry(
-                    startMinute = slice.start.hour * 60 + slice.start.minute,
-                    endMinute = slice.end.hour * 60 + slice.end.minute,
-                    value = slice.count.toFloat(),
-                    series = TimelineSeries.PROJECTED,
-                    emphasized = false
-                )
+            } + if (showFutureProjection) {
+                detail.slices.map { slice ->
+                    TimelineBarEntry(
+                        startMinute = slice.start.hour * 60 + slice.start.minute,
+                        endMinute = slice.end.hour * 60 + slice.end.minute,
+                        value = slice.count.toFloat(),
+                        series = TimelineSeries.PROJECTED,
+                        emphasized = false
+                    )
+                }
+            } else {
+                emptyList()
             } + exerciseSessions.map { session ->
                 TimelineBarEntry(
                     startMinute = session.start.hour * 60 + session.start.minute,
@@ -362,7 +375,8 @@ class MainActivity : AppCompatActivity() {
             detail = detail,
             exerciseSessions = exerciseSessions,
             projectedWorkoutsOnly = projectedWorkoutsOnly,
-            hcExerciseReadError = hcExerciseResult.queryError
+            hcExerciseReadError = hcExerciseResult.queryError,
+            includeSimulatedProjection = showFutureProjection
         )
     }
 
@@ -371,14 +385,20 @@ class MainActivity : AppCompatActivity() {
         detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail,
         exerciseSessions: List<dev.digitaldomi.schrittji.health.HealthConnectExerciseSession>,
         projectedWorkoutsOnly: List<WorkoutPlan>,
-        hcExerciseReadError: String?
+        hcExerciseReadError: String?,
+        includeSimulatedProjection: Boolean
     ): String {
         return buildString {
             append("Existing ")
             append(existingEntries.sumOf { it.count }.formatThousands())
-            append(" · Projected ")
-            appendLine(detail.totalSteps.formatThousands())
-            appendLine("${detail.slices.size} minute records")
+            if (includeSimulatedProjection) {
+                append(" · Projected ")
+                appendLine(detail.totalSteps.formatThousands())
+                appendLine("${detail.slices.size} minute records")
+            } else {
+                appendLine()
+                appendLine(getString(R.string.summary_projection_future_only))
+            }
             hcExerciseReadError?.let {
                 appendLine(getString(R.string.summary_exercise_read_failed, it))
                 appendLine(getString(R.string.summary_exercise_read_failed_hint))
@@ -409,7 +429,12 @@ class MainActivity : AppCompatActivity() {
             }
             if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isEmpty() && hcExerciseReadError == null) {
                 append(getString(R.string.summary_no_workouts))
-            } else if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isNotEmpty() && hcExerciseReadError == null) {
+            } else if (
+                includeSimulatedProjection &&
+                exerciseSessions.isEmpty() &&
+                projectedWorkoutsOnly.isNotEmpty() &&
+                hcExerciseReadError == null
+            ) {
                 appendLine()
                 append(getString(R.string.main_day_hc_workouts_missing_hint))
             }

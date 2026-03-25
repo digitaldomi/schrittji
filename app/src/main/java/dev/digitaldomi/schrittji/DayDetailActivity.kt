@@ -183,37 +183,51 @@ class DayDetailActivity : AppCompatActivity() {
         hcSessions: List<HealthConnectExerciseSession>,
         exerciseReadError: String?
     ) {
+        val showFutureProjection = selectedDate.isAfter(LocalDate.now())
         val slices = detail.slices
         val totalSteps = slices.sumOf { it.count }
-        val projectedOnly = detail.workouts.filter { plan ->
-            hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
+        val projectedOnly = if (showFutureProjection) {
+            detail.workouts.filter { plan ->
+                hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
+            }
+        } else {
+            emptyList()
         }
         binding.textSummary.text = buildString {
             appendLine("Source: Preview projection")
-            appendLine("Generated minute records: ${slices.size}")
-            appendLine("Projected total steps: ${totalSteps.formatThousands()}")
+            if (showFutureProjection) {
+                appendLine("Generated minute records: ${slices.size}")
+                appendLine("Projected total steps: ${totalSteps.formatThousands()}")
+            } else {
+                appendLine(getString(R.string.summary_projection_future_only))
+            }
             appendLine(getString(R.string.day_detail_hc_exercise_count, hcSessions.size))
             exerciseReadError?.let {
                 appendLine(getString(R.string.hc_day_exercise_read_error, it))
                 appendLine(getString(R.string.summary_exercise_read_failed_hint))
             }
         }
-        binding.textEntries.text = if (slices.isEmpty()) {
-            getString(R.string.day_detail_empty)
-        } else {
-            slices.joinToString(separator = "\n") { slice ->
-                "${slice.start.withZoneSameInstant(zoneId).format(timeFormatter)}-${slice.end.withZoneSameInstant(zoneId).format(timeFormatter)}  ${slice.count.formatThousands()} steps"
-            }
+        binding.textEntries.text = when {
+            !showFutureProjection -> getString(R.string.day_detail_empty)
+            slices.isEmpty() -> getString(R.string.day_detail_empty)
+            else ->
+                slices.joinToString(separator = "\n") { slice ->
+                    "${slice.start.withZoneSameInstant(zoneId).format(timeFormatter)}-${slice.end.withZoneSameInstant(zoneId).format(timeFormatter)}  ${slice.count.formatThousands()} steps"
+                }
         }
         binding.chartDayTimeline.submitEntries(
-            slices.map { slice ->
-                TimelineBarEntry(
-                    startMinute = slice.start.hour * 60 + slice.start.minute,
-                    endMinute = slice.end.hour * 60 + slice.end.minute,
-                    value = slice.count.toFloat(),
-                    series = TimelineSeries.PROJECTED,
-                    emphasized = false
-                )
+            if (showFutureProjection) {
+                slices.map { slice ->
+                    TimelineBarEntry(
+                        startMinute = slice.start.hour * 60 + slice.start.minute,
+                        endMinute = slice.end.hour * 60 + slice.end.minute,
+                        value = slice.count.toFloat(),
+                        series = TimelineSeries.PROJECTED,
+                        emphasized = false
+                    )
+                }
+            } else {
+                emptyList()
             } + hcSessions.map { session ->
                 TimelineBarEntry(
                     startMinute = session.start.hour * 60 + session.start.minute,

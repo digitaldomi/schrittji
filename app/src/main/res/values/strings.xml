@@ -89,6 +89,7 @@
     <string name="summary_recorded_header">Recorded in Health Connect:</string>
     <string name="summary_projected_planned_header">Planned only (not yet in Health Connect):</string>
     <string name="summary_no_workouts">No workouts.</string>
+    <string name="summary_projection_future_only">Simulated steps and planned workouts are shown only for future days.</string>
     <string name="summary_exercise_read_failed">Could not read exercise sessions from Health Connect: %1$s</string>
     <string name="summary_exercise_read_failed_hint">If you updated the app, open Settings here and tap Grant permission again, then allow Exercise access in Health Connect.</string>
 </resources>
