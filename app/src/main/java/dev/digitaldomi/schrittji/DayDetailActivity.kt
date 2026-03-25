@@ -136,6 +136,7 @@ class DayDetailActivity : AppCompatActivity() {
             appendLine("Exercise sessions: ${exercises.size}")
             exerciseReadError?.let {
                 appendLine(getString(R.string.hc_day_exercise_read_error, it))
+                appendLine(getString(R.string.summary_exercise_read_failed_hint))
             }
             append("Total steps: ${totalSteps.formatThousands()}")
             if (exercises.isEmpty() && exerciseReadError == null) {
@@ -194,6 +195,7 @@ class DayDetailActivity : AppCompatActivity() {
             appendLine(getString(R.string.day_detail_hc_exercise_count, hcSessions.size))
             exerciseReadError?.let {
                 appendLine(getString(R.string.hc_day_exercise_read_error, it))
+                appendLine(getString(R.string.summary_exercise_read_failed_hint))
             }
         }
         binding.textEntries.text = if (slices.isEmpty()) {

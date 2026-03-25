@@ -290,7 +290,8 @@ class MainActivity : AppCompatActivity() {
             )
             exerciseReadError?.let {
                 appendLine()
-                append(getString(R.string.summary_exercise_read_failed, it))
+                appendLine(getString(R.string.summary_exercise_read_failed, it))
+                append(getString(R.string.summary_exercise_read_failed_hint))
             }
             latestSnapshot?.latestEnd?.let {
                 append("Latest Health Connect end: ${it.format(formatter)}")
@@ -380,6 +381,7 @@ class MainActivity : AppCompatActivity() {
             appendLine("${detail.slices.size} minute records")
             hcExerciseReadError?.let {
                 appendLine(getString(R.string.summary_exercise_read_failed, it))
+                appendLine(getString(R.string.summary_exercise_read_failed_hint))
             }
             if (exerciseSessions.isNotEmpty()) {
                 appendLine(getString(R.string.summary_recorded_header))
