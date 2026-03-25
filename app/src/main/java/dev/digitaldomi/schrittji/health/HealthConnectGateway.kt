@@ -69,12 +69,14 @@ class HealthConnectGateway(private val context: Context) {
     private val exerciseTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     /**
-     * Permissions needed for steps, publishing workouts, and core Schrittji behavior.
-     * The status row and snapshot loading use [hasCoreHealthPermissions] only.
+     * Permissions needed for steps, writing workouts, and **reading** exercise sessions back
+     * (charts and day detail). Exercise read is required for sessions to appear in the app;
+     * write alone does not grant read on Health Connect.
      */
     private val coreHealthPermissions: Set<String> = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getWritePermission(StepsRecord::class),
+        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(DistanceRecord::class),
         HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class)
@@ -83,10 +85,8 @@ class HealthConnectGateway(private val context: Context) {
     private val exerciseReadPermission: String =
         HealthPermission.getReadPermission(ExerciseSessionRecord::class)
 
-    /**
-     * Full set shown in Settings for grant; includes optional exercise read (timeline workout icons).
-     */
-    val requiredPermissions: Set<String> = coreHealthPermissions + exerciseReadPermission
+    /** Grant flow: steps + exercise session read/write (read is required to show workouts in charts). */
+    val requiredPermissions: Set<String> = coreHealthPermissions
 
     fun availability(): Int = HealthConnectClient.getSdkStatus(context)
 
@@ -344,11 +344,8 @@ class HealthConnectGateway(private val context: Context) {
         if ("mindful" in blob || "yoga" in blob || "pilates" in blob || "meditat" in blob) {
             return WorkoutType.MINDFULNESS
         }
-        // Include generic / unknown types so sessions still appear on the chart
-        if (exerciseType == ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT) {
-            return WorkoutType.RUNNING
-        }
-        return null
+        // Never drop a session: unknown/new HC exercise type IDs still render as cardio (running).
+        return WorkoutType.RUNNING
     }
 
     fun formatExerciseSessionDetail(session: HealthConnectExerciseSession): String {
