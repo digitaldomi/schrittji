@@ -10,6 +10,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import dev.digitaldomi.schrittji.chart.ProjectionTimeline
 import dev.digitaldomi.schrittji.chart.TimelineSeries
 import dev.digitaldomi.schrittji.chart.TimelineBarEntry
 import dev.digitaldomi.schrittji.chart.TimelineWorkoutKind
@@ -24,6 +25,7 @@ import dev.digitaldomi.schrittji.simulation.WorkoutPlan
 import dev.digitaldomi.schrittji.simulation.WorkoutType
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -183,23 +185,55 @@ class DayDetailActivity : AppCompatActivity() {
         hcSessions: List<HealthConnectExerciseSession>,
         exerciseReadError: String?
     ) {
-        val showFutureProjection = selectedDate.isAfter(LocalDate.now())
+        val today = LocalDate.now(zoneId)
+        val showFutureProjection = selectedDate.isAfter(today)
+        val isToday = selectedDate == today
+        val nowZdt = ZonedDateTime.now(zoneId)
+        val nowSecOfDay = nowZdt.toLocalTime().toSecondOfDay().coerceIn(0, 86400)
+        val nowMinuteOfDay = nowZdt.hour * 60 + nowZdt.minute + nowZdt.second / 60f
+
         val slices = detail.slices
-        val totalSteps = slices.sumOf { it.count }
-        val projectedOnly = if (showFutureProjection) {
-            detail.workouts.filter { plan ->
+        val projectedOnly = when {
+            showFutureProjection -> detail.workouts.filter { plan ->
                 hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
             }
+            isToday -> detail.workouts.filter { plan ->
+                hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) } &&
+                    plan.start.isAfter(nowZdt)
+            }
+            else -> emptyList()
+        }
+
+        val todayProjectedEntries = if (isToday) {
+            ProjectionTimeline.splitSlicesAtNow(detail.slices, selectedDate, zoneId, nowSecOfDay)
         } else {
             emptyList()
         }
+
+        val projectedStepsForSummary = when {
+            showFutureProjection -> slices.sumOf { it.count }
+            isToday -> todayProjectedEntries.sumOf { it.value.toLong() }
+            else -> 0L
+        }
+        val projectedMinuteCount = when {
+            showFutureProjection -> slices.size
+            isToday -> todayProjectedEntries.size
+            else -> 0
+        }
+
+        binding.chartDayTimeline.setNowMarkerMinuteOfDay(if (isToday) nowMinuteOfDay else null)
         binding.textSummary.text = buildString {
             appendLine("Source: Preview projection")
-            if (showFutureProjection) {
-                appendLine("Generated minute records: ${slices.size}")
-                appendLine("Projected total steps: ${totalSteps.formatThousands()}")
-            } else {
-                appendLine(getString(R.string.summary_projection_future_only))
+            when {
+                showFutureProjection -> {
+                    appendLine("Generated minute records: ${slices.size}")
+                    appendLine("Projected total steps: ${slices.sumOf { it.count }.formatThousands()}")
+                }
+                isToday -> {
+                    appendLine("Projected (rest of day): ${projectedStepsForSummary.formatThousands()} steps")
+                    appendLine("Projection minute records: $projectedMinuteCount")
+                }
+                else -> appendLine(getString(R.string.summary_projection_future_only))
             }
             appendLine(getString(R.string.day_detail_hc_exercise_count, hcSessions.size))
             exerciseReadError?.let {
@@ -208,26 +242,25 @@ class DayDetailActivity : AppCompatActivity() {
             }
         }
         binding.textEntries.text = when {
-            !showFutureProjection -> getString(R.string.day_detail_empty)
-            slices.isEmpty() -> getString(R.string.day_detail_empty)
-            else ->
+            showFutureProjection && slices.isNotEmpty() ->
                 slices.joinToString(separator = "\n") { slice ->
                     "${slice.start.withZoneSameInstant(zoneId).format(timeFormatter)}-${slice.end.withZoneSameInstant(zoneId).format(timeFormatter)}  ${slice.count.formatThousands()} steps"
                 }
+            isToday && todayProjectedEntries.isNotEmpty() ->
+                todayProjectedEntries.joinToString(separator = "\n") { e ->
+                    val zs = selectedDate.atStartOfDay(zoneId).plusSeconds((e.startSecondOfDay ?: 0).toLong())
+                    val ze = selectedDate.atStartOfDay(zoneId).plusSeconds((e.endSecondOfDay ?: 0).toLong())
+                    "${zs.format(timeFormatter)}-${ze.format(timeFormatter)}  ${e.value.toLong().formatThousands()} steps"
+                }
+            else -> getString(R.string.day_detail_empty)
         }
         binding.chartDayTimeline.submitEntries(
-            if (showFutureProjection) {
-                slices.map { slice ->
-                    TimelineBarEntry(
-                        startMinute = slice.start.hour * 60 + slice.start.minute,
-                        endMinute = slice.end.hour * 60 + slice.end.minute,
-                        value = slice.count.toFloat(),
-                        series = TimelineSeries.PROJECTED,
-                        emphasized = false
-                    )
+            when {
+                showFutureProjection -> detail.slices.map {
+                    ProjectionTimeline.sliceToProjectedEntry(it, selectedDate, zoneId)
                 }
-            } else {
-                emptyList()
+                isToday -> todayProjectedEntries
+                else -> emptyList()
             } + hcSessions.map { session ->
                 TimelineBarEntry(
                     startMinute = session.start.hour * 60 + session.start.minute,

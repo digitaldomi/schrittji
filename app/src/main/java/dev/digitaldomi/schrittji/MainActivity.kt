@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dev.digitaldomi.schrittji.chart.DualSeriesBarPoint
+import dev.digitaldomi.schrittji.chart.ProjectionTimeline
 import dev.digitaldomi.schrittji.chart.TimelineSeries
 import dev.digitaldomi.schrittji.chart.TimelineBarEntry
 import dev.digitaldomi.schrittji.chart.TimelineWorkoutKind
@@ -49,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     private val simulationCoordinator by lazy {
         SimulationCoordinator(healthConnectGateway, configStore)
     }
+    private val zoneId: ZoneId = ZoneId.systemDefault()
     private val formatter = DateTimeFormatter.ofPattern("EEE, MMM d HH:mm")
     private val workoutTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     private var latestSnapshot: HealthConnectStepsSnapshot? = null
@@ -311,40 +313,77 @@ class MainActivity : AppCompatActivity() {
         binding.buttonTodayProjectionDay.isEnabled = selectedProjectionDate != LocalDate.now()
 
         val detail = simulationCoordinator.projectDayDetail(config, selectedProjectionDate)
-        val showFutureProjection = selectedProjectionDate.isAfter(LocalDate.now())
+        val today = LocalDate.now(zoneId)
+        val showFutureProjection = selectedProjectionDate.isAfter(today)
+        val isToday = selectedProjectionDate == today
+        val nowZdt = java.time.ZonedDateTime.now(zoneId)
+        val nowMinuteOfDay = nowZdt.hour * 60 + nowZdt.minute + nowZdt.second / 60f
+        val nowSecOfDay = nowZdt.toLocalTime().toSecondOfDay().coerceIn(0, 86400)
+
         val existingEntries = latestSnapshot?.records
             ?.filter { it.start.toLocalDate() == selectedProjectionDate }
             .orEmpty()
         val hcExerciseResult = healthConnectGateway.readExerciseSessionsForDateResult(selectedProjectionDate)
         val exerciseSessions = hcExerciseResult.sessions
-        val projectedWorkoutsOnly = if (showFutureProjection) {
-            detail.workouts.filter { plan ->
+        val projectedWorkoutsOnly = when {
+            showFutureProjection -> detail.workouts.filter { plan ->
                 exerciseSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
             }
+            isToday -> detail.workouts.filter { plan ->
+                exerciseSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) } &&
+                    plan.start.isAfter(nowZdt)
+            }
+            else -> emptyList()
+        }
+
+        val todayProjectedEntries = if (isToday) {
+            ProjectionTimeline.splitSlicesAtNow(detail.slices, selectedProjectionDate, zoneId, nowSecOfDay)
         } else {
             emptyList()
         }
+
+        binding.chartProjectionDetail.setNowMarkerMinuteOfDay(
+            if (isToday) nowMinuteOfDay else null
+        )
         binding.chartProjectionDetail.submitEntries(
             existingEntries.map { entry ->
-                TimelineBarEntry(
-                    startMinute = entry.start.hour * 60 + entry.start.minute,
-                    endMinute = entry.end.hour * 60 + entry.end.minute,
-                    value = entry.count.toFloat(),
-                    series = TimelineSeries.EXISTING,
-                    emphasized = false
-                )
-            } + if (showFutureProjection) {
-                detail.slices.map { slice ->
+                val startSec = entry.start.toLocalTime().toSecondOfDay()
+                val endSec = entry.end.toLocalTime().toSecondOfDay().coerceAtLeast(startSec + 1)
+                val (effStartSec, effEndSec, effValue) = if (isToday) {
+                    val cut = nowSecOfDay
+                    if (endSec <= cut) {
+                        Triple(startSec, endSec, entry.count.toFloat())
+                    } else if (startSec >= cut) {
+                        Triple(0, 0, 0f)
+                    } else {
+                        val span = (endSec - startSec).coerceAtLeast(1)
+                        val portion = (cut - startSec).toFloat() / span.toFloat()
+                        Triple(startSec, cut, entry.count.toFloat() * portion)
+                    }
+                } else {
+                    Triple(startSec, endSec, entry.count.toFloat())
+                }
+                if (effEndSec <= effStartSec || effValue <= 0f) {
+                    null
+                } else {
+                    val zs = selectedProjectionDate.atStartOfDay(zoneId).plusSeconds(effStartSec.toLong())
+                    val ze = selectedProjectionDate.atStartOfDay(zoneId).plusSeconds(effEndSec.toLong())
                     TimelineBarEntry(
-                        startMinute = slice.start.hour * 60 + slice.start.minute,
-                        endMinute = slice.end.hour * 60 + slice.end.minute,
-                        value = slice.count.toFloat(),
-                        series = TimelineSeries.PROJECTED,
-                        emphasized = false
+                        startMinute = zs.hour * 60 + zs.minute,
+                        endMinute = ze.hour * 60 + ze.minute,
+                        value = effValue,
+                        series = TimelineSeries.EXISTING,
+                        emphasized = false,
+                        startSecondOfDay = effStartSec,
+                        endSecondOfDay = effEndSec
                     )
                 }
-            } else {
-                emptyList()
+            }.filterNotNull() + when {
+                showFutureProjection -> detail.slices.map {
+                    ProjectionTimeline.sliceToProjectedEntry(it, selectedProjectionDate, zoneId)
+                }
+                isToday -> todayProjectedEntries
+                else -> emptyList()
             } + exerciseSessions.map { session ->
                 TimelineBarEntry(
                     startMinute = session.start.hour * 60 + session.start.minute,
@@ -370,19 +409,34 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         )
+        val projectedStepsForSummary = when {
+            showFutureProjection -> detail.totalSteps
+            isToday -> todayProjectedEntries.sumOf { it.value.toLong() }
+            else -> 0L
+        }
+        val projectedMinuteCountForSummary = when {
+            showFutureProjection -> detail.slices.size
+            isToday -> todayProjectedEntries.size
+            else -> 0
+        }
+
         binding.textProjectionDetailSummary.text = buildDetailSummaryText(
             existingEntries = existingEntries,
             detail = detail,
+            projectedStepsForSummary = projectedStepsForSummary,
+            projectedMinuteCount = projectedMinuteCountForSummary,
             exerciseSessions = exerciseSessions,
             projectedWorkoutsOnly = projectedWorkoutsOnly,
             hcExerciseReadError = hcExerciseResult.queryError,
-            includeSimulatedProjection = showFutureProjection
+            includeSimulatedProjection = showFutureProjection || isToday
         )
     }
 
     private fun buildDetailSummaryText(
         existingEntries: List<dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry>,
         detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail,
+        projectedStepsForSummary: Long,
+        projectedMinuteCount: Int,
         exerciseSessions: List<dev.digitaldomi.schrittji.health.HealthConnectExerciseSession>,
         projectedWorkoutsOnly: List<WorkoutPlan>,
         hcExerciseReadError: String?,
@@ -392,9 +446,9 @@ class MainActivity : AppCompatActivity() {
             append("Existing ")
             append(existingEntries.sumOf { it.count }.formatThousands())
             if (includeSimulatedProjection) {
-                append(" · Projected ")
-                appendLine(detail.totalSteps.formatThousands())
-                appendLine("${detail.slices.size} minute records")
+                append(" · Projected (from now / future) ")
+                appendLine(projectedStepsForSummary.formatThousands())
+                appendLine("$projectedMinuteCount minute records (projection)")
             } else {
                 appendLine()
                 appendLine(getString(R.string.summary_projection_future_only))

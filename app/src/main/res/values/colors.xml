@@ -19,6 +19,7 @@
     <color name="chart_workout_underlay_mindfulness">#3300838F</color>
     <color name="chart_workout_mindfulness_projected">#2E7D6E</color>
     <color name="chart_workout_underlay_mindfulness_projected">#332E7D6E</color>
+    <color name="chart_now_line">#5C6BC0</color>
     <color name="status_ok">#2E9F61</color>
     <color name="status_bad">#D54848</color>
     <color name="status_warn">#C27A00</color>
