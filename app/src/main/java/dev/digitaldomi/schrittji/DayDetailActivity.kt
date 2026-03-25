@@ -16,6 +16,7 @@ import dev.digitaldomi.schrittji.chart.TimelineWorkoutKind
 import dev.digitaldomi.schrittji.databinding.ActivityDayDetailBinding
 import dev.digitaldomi.schrittji.health.HealthConnectExerciseSession
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
+import dev.digitaldomi.schrittji.health.WorkoutMerge
 import dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry
 import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
 import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
@@ -100,24 +101,26 @@ class DayDetailActivity : AppCompatActivity() {
                 when (source) {
                     DayDetailSource.HEALTH_CONNECT -> {
                         val entries = healthConnectGateway.readStepEntriesForDate(selectedDate)
-                        val exercises = if (healthConnectGateway.hasExerciseReadPermission()) {
-                            try {
-                                healthConnectGateway.readExerciseSessionsForDate(selectedDate)
-                            } catch (_: Exception) {
-                                emptyList()
-                            }
-                        } else {
+                        val exercises = try {
+                            healthConnectGateway.readExerciseSessionsForDate(selectedDate)
+                        } catch (_: Exception) {
                             emptyList()
                         }
                         renderHealthConnectDay(entries, exercises)
                     }
 
-                    DayDetailSource.PROJECTION -> renderProjectionDay(
-                        simulationCoordinator.projectDayDetail(
+                    DayDetailSource.PROJECTION -> {
+                        val detail = simulationCoordinator.projectDayDetail(
                             simulationCoordinator.loadConfig(),
                             selectedDate
                         )
-                    )
+                        val exercises = try {
+                            healthConnectGateway.readExerciseSessionsForDate(selectedDate)
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                        renderProjectionDay(detail, exercises)
+                    }
                 }
             } catch (exception: Exception) {
                 Snackbar.make(
@@ -178,13 +181,20 @@ class DayDetailActivity : AppCompatActivity() {
         )
     }
 
-    private fun renderProjectionDay(detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail) {
+    private fun renderProjectionDay(
+        detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail,
+        hcSessions: List<HealthConnectExerciseSession>
+    ) {
         val slices = detail.slices
         val totalSteps = slices.sumOf { it.count }
+        val projectedOnly = detail.workouts.filter { plan ->
+            hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
+        }
         binding.textSummary.text = buildString {
             appendLine("Source: Schrittji projection")
             appendLine("Generated minute records: ${slices.size}")
-            append("Projected total steps: ${totalSteps.formatThousands()}")
+            appendLine("Projected total steps: ${totalSteps.formatThousands()}")
+            appendLine(getString(R.string.day_detail_hc_exercise_count, hcSessions.size))
         }
         binding.textEntries.text = if (slices.isEmpty()) {
             getString(R.string.day_detail_empty)
@@ -202,7 +212,19 @@ class DayDetailActivity : AppCompatActivity() {
                     series = TimelineSeries.PROJECTED,
                     emphasized = false
                 )
-            } + detail.workouts.map { workout ->
+            } + hcSessions.map { session ->
+                TimelineBarEntry(
+                    startMinute = session.start.hour * 60 + session.start.minute,
+                    endMinute = session.end.hour * 60 + session.end.minute,
+                    value = 1f,
+                    series = TimelineSeries.WORKOUT,
+                    workoutKind = session.type.toTimelineWorkoutKind(),
+                    workoutTitle = session.title?.takeIf { it.isNotBlank() }
+                        ?: defaultWorkoutTitle(session.type),
+                    workoutDetail = healthConnectGateway.formatExerciseSessionDetail(session),
+                    workoutIsProjected = false
+                )
+            } + projectedOnly.map { workout ->
                 TimelineBarEntry(
                     startMinute = workout.start.hour * 60 + workout.start.minute,
                     endMinute = workout.end.hour * 60 + workout.end.minute,

@@ -21,6 +21,7 @@ import dev.digitaldomi.schrittji.chart.TimelineBarEntry
 import dev.digitaldomi.schrittji.chart.TimelineWorkoutKind
 import dev.digitaldomi.schrittji.databinding.ActivityMainBinding
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
+import dev.digitaldomi.schrittji.health.WorkoutMerge
 import dev.digitaldomi.schrittji.health.HealthConnectStepsSnapshot
 import dev.digitaldomi.schrittji.simulation.SimulationConfig
 import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
@@ -227,18 +228,16 @@ class MainActivity : AppCompatActivity() {
             val date = weekStart.plusDays(i.toLong())
             val label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2)
             val detail = simulationCoordinator.projectDayDetail(config, date)
-            projectedCardio += detail.workouts.count { it.type != WorkoutType.MINDFULNESS }
-            projectedMindfulness += detail.workouts.count { it.type == WorkoutType.MINDFULNESS }
-
-            val hcSessions = if (healthConnectGateway.hasExerciseReadPermission()) {
-                try {
-                    healthConnectGateway.readExerciseSessionsForDate(date)
-                } catch (_: Exception) {
-                    emptyList()
-                }
-            } else {
+            val hcSessions = try {
+                healthConnectGateway.readExerciseSessionsForDate(date)
+            } catch (_: Exception) {
                 emptyList()
             }
+            val projectedPlans = detail.workouts.filter { plan ->
+                hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
+            }
+            projectedCardio += projectedPlans.count { it.type != WorkoutType.MINDFULNESS }
+            projectedMindfulness += projectedPlans.count { it.type == WorkoutType.MINDFULNESS }
             hcCardio += hcSessions.count { it.type != WorkoutType.MINDFULNESS }
             hcMindfulness += hcSessions.count { it.type == WorkoutType.MINDFULNESS }
 
@@ -259,8 +258,8 @@ class MainActivity : AppCompatActivity() {
                     projectedValue = projected,
                     hasRecordedCardioWorkout = hcSessions.any { it.type != WorkoutType.MINDFULNESS },
                     hasRecordedMindfulnessWorkout = hcSessions.any { it.type == WorkoutType.MINDFULNESS },
-                    hasProjectedCardioWorkout = detail.workouts.any { it.type != WorkoutType.MINDFULNESS },
-                    hasProjectedMindfulnessWorkout = detail.workouts.any { it.type == WorkoutType.MINDFULNESS }
+                    hasProjectedCardioWorkout = projectedPlans.any { it.type != WorkoutType.MINDFULNESS },
+                    hasProjectedMindfulnessWorkout = projectedPlans.any { it.type == WorkoutType.MINDFULNESS }
                 )
             )
         }
@@ -305,14 +304,13 @@ class MainActivity : AppCompatActivity() {
         val existingEntries = latestSnapshot?.records
             ?.filter { it.start.toLocalDate() == selectedProjectionDate }
             .orEmpty()
-        val exerciseSessions = if (healthConnectGateway.hasExerciseReadPermission()) {
-            try {
-                healthConnectGateway.readExerciseSessionsForDate(selectedProjectionDate)
-            } catch (_: Exception) {
-                emptyList()
-            }
-        } else {
+        val exerciseSessions = try {
+            healthConnectGateway.readExerciseSessionsForDate(selectedProjectionDate)
+        } catch (_: Exception) {
             emptyList()
+        }
+        val projectedWorkoutsOnly = detail.workouts.filter { plan ->
+            exerciseSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
         }
         binding.chartProjectionDetail.submitEntries(
             existingEntries.map { entry ->
@@ -343,7 +341,7 @@ class MainActivity : AppCompatActivity() {
                     workoutDetail = healthConnectGateway.formatExerciseSessionDetail(session),
                     workoutIsProjected = false
                 )
-            } + detail.workouts.map { workout ->
+            } + projectedWorkoutsOnly.map { workout ->
                 TimelineBarEntry(
                     startMinute = workout.start.hour * 60 + workout.start.minute,
                     endMinute = workout.end.hour * 60 + workout.end.minute,
@@ -359,14 +357,16 @@ class MainActivity : AppCompatActivity() {
         binding.textProjectionDetailSummary.text = buildDetailSummaryText(
             existingEntries = existingEntries,
             detail = detail,
-            exerciseSessions = exerciseSessions
+            exerciseSessions = exerciseSessions,
+            projectedWorkoutsOnly = projectedWorkoutsOnly
         )
     }
 
     private fun buildDetailSummaryText(
         existingEntries: List<dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry>,
         detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail,
-        exerciseSessions: List<dev.digitaldomi.schrittji.health.HealthConnectExerciseSession>
+        exerciseSessions: List<dev.digitaldomi.schrittji.health.HealthConnectExerciseSession>,
+        projectedWorkoutsOnly: List<WorkoutPlan>
     ): String {
         return buildString {
             append("Existing ")
@@ -375,17 +375,22 @@ class MainActivity : AppCompatActivity() {
             appendLine(detail.totalSteps.formatThousands())
             appendLine("${detail.slices.size} minute records")
             if (exerciseSessions.isNotEmpty()) {
-                appendLine("Recorded:")
+                appendLine(getString(R.string.summary_recorded_header))
                 exerciseSessions.forEach { session ->
                     val dur = ChronoUnit.MINUTES.between(session.start, session.end).coerceAtLeast(1)
+                    val tag = if (session.isFromSchrittji) {
+                        " " + getString(R.string.summary_tag_schrittji_hc)
+                    } else {
+                        ""
+                    }
                     appendLine(
-                        "· ${session.type.label()} ${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)} · ${dur} min"
+                        "· ${session.type.label()} ${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)} · ${dur} min$tag"
                     )
                 }
             }
-            if (detail.workouts.isNotEmpty()) {
-                appendLine("Projected:")
-                detail.workouts.forEach { workout ->
+            if (projectedWorkoutsOnly.isNotEmpty()) {
+                appendLine(getString(R.string.summary_projected_planned_header))
+                projectedWorkoutsOnly.forEach { workout ->
                     val dur = ChronoUnit.MINUTES.between(workout.start, workout.end).coerceAtLeast(1)
                     val stepsInWorkout = sumStepsInWindow(detail.slices, workout.start, workout.end)
                     val distancePart = if (workout.type == WorkoutType.MINDFULNESS) {
@@ -398,9 +403,9 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
-            if (exerciseSessions.isEmpty() && detail.workouts.isEmpty()) {
-                append("No workouts.")
-            } else if (exerciseSessions.isEmpty() && detail.workouts.isNotEmpty()) {
+            if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isEmpty()) {
+                append(getString(R.string.summary_no_workouts))
+            } else if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isNotEmpty()) {
                 appendLine()
                 append(getString(R.string.main_day_hc_workouts_missing_hint))
             }

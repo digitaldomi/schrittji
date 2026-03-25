@@ -77,10 +77,18 @@
     <string name="day_detail_summary_header">Selected day summary</string>
     <string name="day_detail_entries_header">Selected day entries</string>
     <string name="day_detail_empty">No step entries exist for this day.</string>
+    <string name="day_detail_hc_exercise_count">Exercise sessions read from Health Connect: %1$d</string>
     <string name="workout_title_running">Running</string>
     <string name="workout_title_cycling">Cycling</string>
     <string name="workout_title_mindfulness">Mindfulness</string>
     <string name="workout_info_source_projected">Projected Schrittji workout</string>
+    <string name="workout_hc_source_schrittji">Source: Health Connect (written by Schrittji)</string>
+    <string name="workout_hc_source_other_app">Source: Health Connect (%1$s)</string>
+    <string name="workout_hc_source_health_connect">Source: Health Connect</string>
     <string name="hc_day_exercise_zero_hint">Run/bike sessions here are Exercise records in Health Connect. The main Day chart can still show orange projected workouts from Schrittji before they are written to Health Connect.</string>
-    <string name="main_day_hc_workouts_missing_hint">No run/bike exercise sessions in Health Connect for this day — orange on the chart is Schrittji projection only.</string>
+    <string name="main_day_hc_workouts_missing_hint">No exercise sessions could be read from Health Connect for this day — orange on the chart is projection only. Grant exercise read permission in Settings if sessions exist in Health Connect.</string>
+    <string name="summary_recorded_header">Recorded in Health Connect:</string>
+    <string name="summary_projected_planned_header">Planned only (not yet in Health Connect):</string>
+    <string name="summary_tag_schrittji_hc">(Schrittji)</string>
+    <string name="summary_no_workouts">No workouts.</string>
 </resources>

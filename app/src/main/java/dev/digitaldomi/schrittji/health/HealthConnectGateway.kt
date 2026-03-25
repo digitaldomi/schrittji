@@ -15,6 +15,7 @@ import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.Energy
 import androidx.health.connect.client.units.Length
+import dev.digitaldomi.schrittji.R
 import dev.digitaldomi.schrittji.simulation.MinuteStepSlice
 import dev.digitaldomi.schrittji.simulation.WorkoutPlan
 import dev.digitaldomi.schrittji.simulation.WorkoutType
@@ -24,6 +25,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 data class HealthConnectStepRecordEntry(
     val start: ZonedDateTime,
@@ -38,7 +40,10 @@ data class HealthConnectExerciseSession(
     val end: ZonedDateTime,
     val type: WorkoutType,
     val title: String?,
-    val notes: String?
+    val notes: String?,
+    /** Package name of the app that wrote this session (empty if unknown). */
+    val dataOriginPackage: String,
+    val isFromSchrittji: Boolean
 )
 
 data class HealthConnectStepDaySummary(
@@ -287,13 +292,20 @@ class HealthConnectGateway(private val context: Context) {
                 )
             )
             allSessions += response.records.mapNotNull { record ->
-                val mapped = mapExerciseTypeToWorkoutType(record.exerciseType) ?: return@mapNotNull null
+                val pkg = record.metadata.dataOrigin.packageName.orEmpty()
+                val mapped = mapExerciseTypeToWorkoutType(
+                    exerciseType = record.exerciseType,
+                    title = record.title,
+                    notes = record.notes
+                ) ?: return@mapNotNull null
                 HealthConnectExerciseSession(
                     start = ZonedDateTime.ofInstant(record.startTime, zoneId),
                     end = ZonedDateTime.ofInstant(record.endTime, zoneId),
                     type = mapped,
                     title = record.title,
-                    notes = record.notes
+                    notes = record.notes,
+                    dataOriginPackage = pkg,
+                    isFromSchrittji = pkg == context.packageName
                 )
             }
             pageToken = response.pageToken
@@ -302,16 +314,41 @@ class HealthConnectGateway(private val context: Context) {
         return allSessions.sortedBy { it.start.toInstant() }
     }
 
-    private fun mapExerciseTypeToWorkoutType(exerciseType: Int): WorkoutType? {
-        return when (exerciseType) {
-            ExerciseSessionRecord.EXERCISE_TYPE_RUNNING -> WorkoutType.RUNNING
-            ExerciseSessionRecord.EXERCISE_TYPE_BIKING -> WorkoutType.CYCLING
+    private fun mapExerciseTypeToWorkoutType(
+        exerciseType: Int,
+        title: String?,
+        notes: String?
+    ): WorkoutType? {
+        when (exerciseType) {
+            ExerciseSessionRecord.EXERCISE_TYPE_RUNNING,
+            ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL -> return WorkoutType.RUNNING
+            ExerciseSessionRecord.EXERCISE_TYPE_BIKING,
+            ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY -> return WorkoutType.CYCLING
             ExerciseSessionRecord.EXERCISE_TYPE_GUIDED_BREATHING,
             ExerciseSessionRecord.EXERCISE_TYPE_YOGA,
             ExerciseSessionRecord.EXERCISE_TYPE_PILATES,
-            ExerciseSessionRecord.EXERCISE_TYPE_STRETCHING -> WorkoutType.MINDFULNESS
-            else -> null
+            ExerciseSessionRecord.EXERCISE_TYPE_STRETCHING -> return WorkoutType.MINDFULNESS
         }
+        val blob = "${title.orEmpty()} ${notes.orEmpty()}".lowercase(Locale.ROOT)
+        if ("schrittji" in blob) {
+            return when {
+                "bike" in blob || "cycling" in blob || "rad" in blob -> WorkoutType.CYCLING
+                "mindful" in blob || "yoga" in blob || "breath" in blob -> WorkoutType.MINDFULNESS
+                else -> WorkoutType.RUNNING
+            }
+        }
+        if ("run" in blob || "lauf" in blob || "jog" in blob) return WorkoutType.RUNNING
+        if ("bike" in blob || "cycling" in blob || "radfahren" in blob || "fahrrad" in blob) {
+            return WorkoutType.CYCLING
+        }
+        if ("mindful" in blob || "yoga" in blob || "pilates" in blob || "meditat" in blob) {
+            return WorkoutType.MINDFULNESS
+        }
+        // Include generic / unknown types so sessions still appear on the chart
+        if (exerciseType == ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT) {
+            return WorkoutType.RUNNING
+        }
+        return null
     }
 
     fun formatExerciseSessionDetail(session: HealthConnectExerciseSession): String {
@@ -322,7 +359,19 @@ class HealthConnectGateway(private val context: Context) {
             )
             appendLine("Duration: $duration min")
             session.notes?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
-            append("Source: Health Connect")
+            when {
+                session.isFromSchrittji ->
+                    append(context.getString(R.string.workout_hc_source_schrittji))
+                session.dataOriginPackage.isNotBlank() ->
+                    append(
+                        context.getString(
+                            R.string.workout_hc_source_other_app,
+                            session.dataOriginPackage
+                        )
+                    )
+                else ->
+                    append(context.getString(R.string.workout_hc_source_health_connect))
+            }
         }
     }
 }
