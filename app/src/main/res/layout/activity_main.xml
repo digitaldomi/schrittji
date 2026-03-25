@@ -280,17 +280,17 @@
                         android:orientation="horizontal">
 
                         <View
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
                             android:background="@drawable/status_dot"
                             android:backgroundTint="@color/chart_existing" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginStart="4dp"
                             android:text="@string/legend_existing_short"
-                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
                             android:textColor="@color/brand_text" />
                     </LinearLayout>
 
@@ -302,17 +302,17 @@
                         android:orientation="horizontal">
 
                         <View
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
                             android:background="@drawable/status_dot"
                             android:backgroundTint="@color/chart_projected" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginStart="4dp"
                             android:text="@string/legend_projected_short"
-                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
                             android:textColor="@color/brand_text" />
                     </LinearLayout>
 
@@ -324,17 +324,39 @@
                         android:orientation="horizontal">
 
                         <View
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
                             android:background="@drawable/status_dot"
                             android:backgroundTint="@color/chart_workout" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
-                            android:text="@string/legend_workout_short"
-                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:layout_marginStart="4dp"
+                            android:text="@string/legend_workout_hc_short"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                            android:textColor="@color/brand_text" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <View
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:background="@drawable/status_dot"
+                            android:backgroundTint="@color/chart_workout_projected" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:text="@string/legend_workout_proj_short"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
                             android:textColor="@color/brand_text" />
                     </LinearLayout>
                 </LinearLayout>
@@ -445,17 +467,17 @@
                         android:orientation="horizontal">
 
                         <View
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
                             android:background="@drawable/status_dot"
                             android:backgroundTint="@color/chart_existing" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginStart="4dp"
                             android:text="@string/legend_existing_short"
-                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
                             android:textColor="@color/brand_text" />
                     </LinearLayout>
 
@@ -467,17 +489,17 @@
                         android:orientation="horizontal">
 
                         <View
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
                             android:background="@drawable/status_dot"
                             android:backgroundTint="@color/chart_projected" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginStart="4dp"
                             android:text="@string/legend_projected_short"
-                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
                             android:textColor="@color/brand_text" />
                     </LinearLayout>
 
@@ -489,17 +511,39 @@
                         android:orientation="horizontal">
 
                         <View
-                            android:layout_width="10dp"
-                            android:layout_height="10dp"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
                             android:background="@drawable/status_dot"
                             android:backgroundTint="@color/chart_workout" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
-                            android:text="@string/legend_workout_short"
-                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:layout_marginStart="4dp"
+                            android:text="@string/legend_workout_hc_short"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                            android:textColor="@color/brand_text" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <View
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:background="@drawable/status_dot"
+                            android:backgroundTint="@color/chart_workout_projected" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:text="@string/legend_workout_proj_short"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
                             android:textColor="@color/brand_text" />
                     </LinearLayout>
                 </LinearLayout>

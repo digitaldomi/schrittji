@@ -30,7 +30,8 @@
     <string name="nav_compact_this_week">Now</string>
     <string name="legend_existing_short">Existing</string>
     <string name="legend_projected_short">Projected</string>
-    <string name="legend_workout_short">Workouts</string>
+    <string name="legend_workout_hc_short">HC exercise</string>
+    <string name="legend_workout_proj_short">Planned</string>
     <string name="week_summary_steps_range">Steps per day (existing + projected): avg %1$s, min %2$s, max %3$s</string>
     <string name="week_summary_workouts">Workouts this week: %1$d recorded (Health Connect), %2$d projected</string>
     <string name="legend_existing">Existing Health Connect data</string>

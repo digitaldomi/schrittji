@@ -56,7 +56,8 @@ class DayTimelineChartView @JvmOverloads constructor(
     private val projectedColor = context.getColor(R.color.chart_projected)
     private val projectedEmphasizedColor = context.getColor(R.color.brand_primary_dark)
     private val existingColor = context.getColor(R.color.chart_existing)
-    private val workoutColor = context.getColor(R.color.chart_workout)
+    private val workoutColorRecorded = context.getColor(R.color.chart_workout)
+    private val workoutColorProjected = context.getColor(R.color.chart_workout_projected)
     private val textColor = context.getColor(R.color.brand_text)
     private val axisColor = context.getColor(R.color.panel_stroke)
     private val bucketCount = 24
@@ -78,17 +79,17 @@ class DayTimelineChartView @JvmOverloads constructor(
     }
     private val workoutPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = workoutColor
+        color = workoutColorRecorded
         alpha = 220
     }
     private val workoutStripPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = workoutColor
+        color = workoutColorRecorded
         alpha = 235
     }
     private val workoutStripPaintProjected = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = workoutColor
+        color = workoutColorProjected
         alpha = 200
     }
     private val workoutUnderlayRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -321,7 +322,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                 TimelineWorkoutKind.CYCLING -> cycleDrawable
             }
             if (drawable != null) {
-                val tint = workoutColor
+                val tint = if (overlay.isProjected) workoutColorProjected else workoutColorRecorded
                 DrawableCompat.setTint(drawable, tint)
                 drawable.bounds = Rect(iconLeft, iconTopI, iconRight, iconBottom)
                 drawable.draw(canvas)

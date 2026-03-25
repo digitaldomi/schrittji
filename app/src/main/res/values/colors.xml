@@ -8,9 +8,12 @@
     <color name="surface_background">#F3F8F5</color>
     <color name="chart_existing">#2C8E73</color>
     <color name="chart_projected">#4465D9</color>
+    <!-- Health Connect exercise sessions (recorded) -->
     <color name="chart_workout">#D96B2B</color>
     <color name="chart_workout_underlay">#33D96B2B</color>
-    <color name="chart_workout_underlay_projected">#33D96B2B</color>
+    <!-- Schrittji projected workouts (distinct from HC orange) -->
+    <color name="chart_workout_projected">#8E24AA</color>
+    <color name="chart_workout_underlay_projected">#338E24AA</color>
     <color name="status_ok">#2E9F61</color>
     <color name="status_bad">#D54848</color>
     <color name="status_warn">#C27A00</color>

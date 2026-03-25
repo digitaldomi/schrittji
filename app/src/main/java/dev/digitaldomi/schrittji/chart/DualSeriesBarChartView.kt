@@ -27,7 +27,7 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     private val existingColor = context.getColor(R.color.chart_existing)
     private val projectedColor = context.getColor(R.color.chart_projected)
     private val workoutUnderlayRecorded = context.getColor(R.color.chart_workout_underlay)
-    private val workoutUnderlayProjected = context.getColor(R.color.chart_workout_underlay)
+    private val workoutUnderlayProjected = context.getColor(R.color.chart_workout_underlay_projected)
     private val axisColor = context.getColor(R.color.panel_stroke)
     private val textColor = context.getColor(R.color.brand_text)
 
