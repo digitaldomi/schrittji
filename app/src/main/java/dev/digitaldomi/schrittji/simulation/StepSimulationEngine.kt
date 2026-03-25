@@ -903,14 +903,15 @@ class StepSimulationEngine {
         )
         val runningDays = runningPool.shuffled(random).take(runningSessionCount).toSet()
         val cyclingDays = cyclingPool.shuffled(random).take(cyclingSessionCount).toSet()
-        val mindfulnessPool = (DayOfWeek.entries.toSet() - runningDays - cyclingDays).toList()
+        // Mindfulness can fall on the same calendar day as run/cycle; placement avoids time overlap.
+        // Session count is capped by 7 days/week, not by "leftover" days after run/cycle.
         val mindfulnessSessionCount = randomSessionCount(
             config.mindfulnessMinSessionsPerWeek,
             config.mindfulnessMaxSessionsPerWeek,
-            mindfulnessPool.size.coerceAtLeast(1),
+            DayOfWeek.entries.size,
             random
         )
-        val mindfulnessDays = mindfulnessPool.shuffled(random).take(mindfulnessSessionCount).toSet()
+        val mindfulnessDays = DayOfWeek.entries.shuffled(random).take(mindfulnessSessionCount).toSet()
         val weekendEarlyRisers = buildSet {
             if (random.nextDouble() < 0.3) add(DayOfWeek.SATURDAY)
             if (random.nextDouble() < 0.2) add(DayOfWeek.SUNDAY)
