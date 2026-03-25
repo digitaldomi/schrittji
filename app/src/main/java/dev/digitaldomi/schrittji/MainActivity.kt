@@ -4,6 +4,9 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -14,6 +17,7 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILA
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.R as MaterialR
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dev.digitaldomi.schrittji.chart.DualSeriesBarPoint
 import dev.digitaldomi.schrittji.chart.ProjectionTimeline
@@ -21,12 +25,15 @@ import dev.digitaldomi.schrittji.chart.TimelineSeries
 import dev.digitaldomi.schrittji.chart.TimelineBarEntry
 import dev.digitaldomi.schrittji.chart.TimelineWorkoutKind
 import dev.digitaldomi.schrittji.databinding.ActivityMainBinding
+import dev.digitaldomi.schrittji.health.HealthConnectExerciseSession
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
+import dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry
 import dev.digitaldomi.schrittji.health.WorkoutMerge
 import dev.digitaldomi.schrittji.health.HealthConnectStepsSnapshot
 import dev.digitaldomi.schrittji.simulation.SimulationConfig
 import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
 import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
+import dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail
 import dev.digitaldomi.schrittji.simulation.WorkoutPlan
 import dev.digitaldomi.schrittji.simulation.WorkoutType
 import java.time.DayOfWeek
@@ -276,33 +283,17 @@ class MainActivity : AppCompatActivity() {
         val avg = if (dayTotals.isNotEmpty()) dayTotals.sum().toDouble() / dayTotals.size else 0.0
         val minV = dayTotals.minOrNull() ?: 0L
         val maxV = dayTotals.maxOrNull() ?: 0L
-        binding.textChartSummary.text = buildString {
-            appendLine(
-                getString(
-                    R.string.week_summary_steps_range,
-                    avg.roundToThousandsLabel(),
-                    minV.formatThousands(),
-                    maxV.formatThousands()
-                )
-            )
-            appendLine(
-                getString(
-                    R.string.week_summary_workouts_breakdown,
-                    hcCardio,
-                    hcMindfulness,
-                    projectedCardio,
-                    projectedMindfulness
-                )
-            )
-            exerciseReadError?.let {
-                appendLine()
-                appendLine(getString(R.string.summary_exercise_read_failed, it))
-                append(getString(R.string.summary_exercise_read_failed_hint))
-            }
-            latestSnapshot?.latestEnd?.let {
-                append("Latest Health Connect end: ${it.format(formatter)}")
-            }
-        }
+        populateWeekSummary(
+            avgLabel = avg.roundToThousandsLabel(),
+            minV = minV,
+            maxV = maxV,
+            hcCardio = hcCardio,
+            hcMindfulness = hcMindfulness,
+            projectedCardio = projectedCardio,
+            projectedMindfulness = projectedMindfulness,
+            exerciseReadError = exerciseReadError,
+            latestEndText = latestSnapshot?.latestEnd?.let { "Latest Health Connect end: ${it.format(formatter)}" }
+        )
     }
 
     private suspend fun renderProjectionDetail(config: SimulationConfig) {
@@ -420,7 +411,7 @@ class MainActivity : AppCompatActivity() {
             else -> 0
         }
 
-        binding.textProjectionDetailSummary.text = buildDetailSummaryText(
+        populateDayDetailSummary(
             existingEntries = existingEntries,
             detail = detail,
             projectedStepsForSummary = projectedStepsForSummary,
@@ -432,66 +423,254 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun buildDetailSummaryText(
-        existingEntries: List<dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry>,
-        detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail,
+    private fun populateDayDetailSummary(
+        existingEntries: List<HealthConnectStepRecordEntry>,
+        detail: ProjectedStepDayDetail,
         projectedStepsForSummary: Long,
         projectedMinuteCount: Int,
-        exerciseSessions: List<dev.digitaldomi.schrittji.health.HealthConnectExerciseSession>,
+        exerciseSessions: List<HealthConnectExerciseSession>,
         projectedWorkoutsOnly: List<WorkoutPlan>,
         hcExerciseReadError: String?,
         includeSimulatedProjection: Boolean
-    ): String {
-        return buildString {
-            append("Existing ")
-            append(existingEntries.sumOf { it.count }.formatThousands())
-            if (includeSimulatedProjection) {
-                append(" · Projected (from now / future) ")
-                appendLine(projectedStepsForSummary.formatThousands())
-                appendLine("$projectedMinuteCount minute records (projection)")
+    ) {
+        val container = binding.containerProjectionDetailSummary
+        container.removeAllViews()
+        val inflater = layoutInflater
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        fun addSpacer() {
+            val v = View(this)
+            v.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (6 * resources.displayMetrics.density).toInt()
+            )
+            container.addView(v)
+        }
+
+        fun addStatRow(dotColor: Int, label: String, value: String, showValue: Boolean = true) {
+            val row = inflater.inflate(R.layout.item_summary_stat_row, container, false)
+            row.findViewById<View>(R.id.dotStat).backgroundTintList =
+                ColorStateList.valueOf(ContextCompat.getColor(this, dotColor))
+            row.findViewById<TextView>(R.id.textStatLabel).text = label
+            val valueTv = row.findViewById<TextView>(R.id.textStatValue)
+            if (showValue) {
+                valueTv.text = value
+                valueTv.visibility = View.VISIBLE
             } else {
-                appendLine()
-                appendLine(getString(R.string.summary_projection_future_only))
+                valueTv.visibility = View.GONE
             }
-            hcExerciseReadError?.let {
-                appendLine(getString(R.string.summary_exercise_read_failed, it))
-                appendLine(getString(R.string.summary_exercise_read_failed_hint))
-            }
-            if (exerciseSessions.isNotEmpty()) {
-                appendLine(getString(R.string.summary_recorded_header))
-                exerciseSessions.forEach { session ->
-                    val dur = ChronoUnit.MINUTES.between(session.start, session.end).coerceAtLeast(1)
-                    appendLine(
-                        "· ${session.type.label()} ${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)} · ${dur} min"
-                    )
+            container.addView(row)
+        }
+
+        fun addWorkoutRow(drawableRes: Int, iconTint: Int, line: String) {
+            val row = inflater.inflate(R.layout.item_summary_workout_row, container, false)
+            val icon = row.findViewById<ImageView>(R.id.iconWorkout)
+            icon.setImageResource(drawableRes)
+            icon.imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this, iconTint))
+            row.findViewById<TextView>(R.id.textWorkoutLine).text = line
+            container.addView(row)
+        }
+
+        val existingSteps = existingEntries.sumOf { it.count }
+        addStatRow(
+            R.color.chart_existing,
+            getString(R.string.summary_stat_existing_steps),
+            existingSteps.formatThousands()
+        )
+        if (includeSimulatedProjection) {
+            addSpacer()
+            addStatRow(
+                R.color.chart_projected,
+                getString(R.string.summary_stat_projected_steps),
+                projectedStepsForSummary.formatThousands()
+            )
+            addStatRow(
+                R.color.chart_projected,
+                getString(R.string.summary_stat_projection_records, projectedMinuteCount),
+                "",
+                showValue = false
+            )
+        } else {
+            addSpacer()
+            val tv = TextView(this)
+            tv.layoutParams = lp
+            tv.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodyMedium)
+            tv.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+            tv.text = getString(R.string.summary_projection_future_only)
+            container.addView(tv)
+        }
+
+        hcExerciseReadError?.let {
+            addSpacer()
+            val err = TextView(this)
+            err.layoutParams = lp
+            err.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodySmall)
+            err.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+            err.text = getString(R.string.summary_exercise_read_failed, it) + "\n" +
+                getString(R.string.summary_exercise_read_failed_hint)
+            container.addView(err)
+        }
+
+        if (exerciseSessions.isNotEmpty()) {
+            addSpacer()
+            val h = TextView(this)
+            h.layoutParams = lp
+            h.setTextAppearance(MaterialR.style.TextAppearance_Material3_TitleSmall)
+            h.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+            h.text = getString(R.string.summary_recorded_header)
+            container.addView(h)
+            exerciseSessions.forEach { session ->
+                val dur = ChronoUnit.MINUTES.between(session.start, session.end).coerceAtLeast(1)
+                val line =
+                    "${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)} · $dur min"
+                val (dr, tint) = when (session.type) {
+                    WorkoutType.RUNNING ->
+                        R.drawable.ic_workout_run to R.color.chart_workout
+                    WorkoutType.CYCLING ->
+                        R.drawable.ic_workout_cycle to R.color.chart_workout
+                    WorkoutType.MINDFULNESS ->
+                        R.drawable.ic_workout_mindfulness to R.color.chart_workout_mindfulness
                 }
+                addWorkoutRow(dr, tint, line)
             }
-            if (projectedWorkoutsOnly.isNotEmpty()) {
-                appendLine(getString(R.string.summary_projected_planned_header))
-                projectedWorkoutsOnly.forEach { workout ->
-                    val dur = ChronoUnit.MINUTES.between(workout.start, workout.end).coerceAtLeast(1)
-                    val stepsInWorkout = sumStepsInWindow(detail.slices, workout.start, workout.end)
-                    val distancePart = if (workout.type == WorkoutType.MINDFULNESS) {
-                        ""
-                    } else {
-                        " · ~${stepsInWorkout.formatThousands()} st · ${String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0)}"
-                    }
-                    appendLine(
-                        "· ${workout.type.label()} ${workout.start.format(workoutTimeFormatter)}–${workout.end.format(workoutTimeFormatter)} · ${dur} min$distancePart"
-                    )
+        }
+
+        if (projectedWorkoutsOnly.isNotEmpty()) {
+            addSpacer()
+            val h = TextView(this)
+            h.layoutParams = lp
+            h.setTextAppearance(MaterialR.style.TextAppearance_Material3_TitleSmall)
+            h.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+            h.text = getString(R.string.summary_projected_planned_header)
+            container.addView(h)
+            projectedWorkoutsOnly.forEach { workout ->
+                val dur = ChronoUnit.MINUTES.between(workout.start, workout.end).coerceAtLeast(1)
+                val stepsInWorkout = sumStepsInWindow(detail.slices, workout.start, workout.end)
+                val extra = if (workout.type == WorkoutType.MINDFULNESS) {
+                    ""
+                } else {
+                    " · ~${stepsInWorkout.formatThousands()} st · " +
+                        String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0)
                 }
+                val line =
+                    "${workout.start.format(workoutTimeFormatter)}–${workout.end.format(workoutTimeFormatter)} · $dur min$extra"
+                val (dr, tint) = when (workout.type) {
+                    WorkoutType.RUNNING ->
+                        R.drawable.ic_workout_run to R.color.chart_workout_projected
+                    WorkoutType.CYCLING ->
+                        R.drawable.ic_workout_cycle to R.color.chart_workout_projected
+                    WorkoutType.MINDFULNESS ->
+                        R.drawable.ic_workout_mindfulness to R.color.chart_workout_mindfulness_projected
+                }
+                addWorkoutRow(dr, tint, line)
             }
-            if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isEmpty() && hcExerciseReadError == null) {
-                append(getString(R.string.summary_no_workouts))
-            } else if (
-                includeSimulatedProjection &&
-                exerciseSessions.isEmpty() &&
-                projectedWorkoutsOnly.isNotEmpty() &&
-                hcExerciseReadError == null
-            ) {
-                appendLine()
-                append(getString(R.string.main_day_hc_workouts_missing_hint))
-            }
+        }
+
+        if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isEmpty() && hcExerciseReadError == null) {
+            addSpacer()
+            val tv = TextView(this)
+            tv.layoutParams = lp
+            tv.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodyMedium)
+            tv.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+            tv.text = getString(R.string.summary_no_workouts)
+            container.addView(tv)
+        } else if (
+            includeSimulatedProjection &&
+            exerciseSessions.isEmpty() &&
+            projectedWorkoutsOnly.isNotEmpty() &&
+            hcExerciseReadError == null
+        ) {
+            addSpacer()
+            val tv = TextView(this)
+            tv.layoutParams = lp
+            tv.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodySmall)
+            tv.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+            tv.text = getString(R.string.main_day_hc_workouts_missing_hint)
+            container.addView(tv)
+        }
+    }
+
+    private fun populateWeekSummary(
+        avgLabel: String,
+        minV: Long,
+        maxV: Long,
+        hcCardio: Int,
+        hcMindfulness: Int,
+        projectedCardio: Int,
+        projectedMindfulness: Int,
+        exerciseReadError: String?,
+        latestEndText: String?
+    ) {
+        val container = binding.containerChartSummary
+        container.removeAllViews()
+        val inflater = layoutInflater
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        fun addSpacer() {
+            val v = View(this)
+            v.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (8 * resources.displayMetrics.density).toInt()
+            )
+            container.addView(v)
+        }
+
+        val stepsTv = TextView(this)
+        stepsTv.layoutParams = lp
+        stepsTv.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodyLarge)
+        stepsTv.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+        stepsTv.text = getString(
+            R.string.week_summary_steps_range,
+            avgLabel,
+            minV.formatThousands(),
+            maxV.formatThousands()
+        )
+        container.addView(stepsTv)
+
+        addSpacer()
+        val counts = inflater.inflate(R.layout.item_summary_week_workout_counts, container, false)
+        counts.findViewById<TextView>(R.id.textHcRun).text = hcCardio.toString()
+        counts.findViewById<TextView>(R.id.textHcMind).text = hcMindfulness.toString()
+        counts.findViewById<TextView>(R.id.textProjRun).text = projectedCardio.toString()
+        counts.findViewById<TextView>(R.id.textProjMind).text = projectedMindfulness.toString()
+        counts.findViewById<ImageView>(R.id.iconHcRun).apply {
+            setImageResource(R.drawable.ic_workout_run)
+            imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.chart_workout))
+        }
+        counts.findViewById<ImageView>(R.id.iconProjRun).apply {
+            setImageResource(R.drawable.ic_workout_run)
+            imageTintList =
+                ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.chart_workout_projected))
+        }
+        counts.findViewById<ImageView>(R.id.iconHcMind).imageTintList =
+            ColorStateList.valueOf(ContextCompat.getColor(this, R.color.chart_workout_mindfulness))
+        counts.findViewById<ImageView>(R.id.iconProjMind).imageTintList =
+            ColorStateList.valueOf(ContextCompat.getColor(this, R.color.chart_workout_mindfulness_projected))
+        container.addView(counts)
+
+        exerciseReadError?.let {
+            addSpacer()
+            val err = TextView(this)
+            err.layoutParams = lp
+            err.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodySmall)
+            err.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+            err.text = getString(R.string.summary_exercise_read_failed, it) + "\n" +
+                getString(R.string.summary_exercise_read_failed_hint)
+            container.addView(err)
+        }
+        latestEndText?.let {
+            addSpacer()
+            val foot = TextView(this)
+            foot.layoutParams = lp
+            foot.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodySmall)
+            foot.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+            foot.alpha = 0.85f
+            foot.text = it
+            container.addView(foot)
         }
     }
 

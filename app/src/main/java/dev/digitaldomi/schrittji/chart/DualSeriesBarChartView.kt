@@ -53,6 +53,14 @@ class DualSeriesBarChartView @JvmOverloads constructor(
         textAlign = Paint.Align.CENTER
         textSize = 10f * scaledDensity
     }
+    private val yAxisLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textAlign = Paint.Align.RIGHT
+        textSize = 9f * scaledDensity
+        alpha = 200
+    }
+
+    private val yAxisGutterPx = resources.getDimensionPixelSize(R.dimen.chart_y_axis_gutter).toFloat()
     private val underlayRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = workoutUnderlayRecorded
@@ -99,7 +107,7 @@ class DualSeriesBarChartView @JvmOverloads constructor(
             return
         }
 
-        val chartLeft = paddingLeft + 12f * density
+        val chartLeft = paddingLeft + yAxisGutterPx
         val chartRight = width - paddingRight - 12f * density
         val chartTop = paddingTop + 12f * density
         val chartBottom = height - paddingBottom - 20f * density
@@ -112,6 +120,8 @@ class DualSeriesBarChartView @JvmOverloads constructor(
         val barWidth = (slotWidth * 0.28f).coerceAtLeast(4f * density)
 
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
+        canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint)
+        drawYAxisLabels(canvas, chartLeft, chartTop, chartBottom, maxValue)
 
         points.forEachIndexed { index, point ->
             val slotLeft = chartLeft + slotWidth * index
@@ -181,6 +191,34 @@ class DualSeriesBarChartView @JvmOverloads constructor(
                 )
             }
             canvas.drawText(point.label, centerX, height - paddingBottom - (6f * density), labelPaint)
+        }
+    }
+
+    private fun formatAxisValue(value: Float): String {
+        return if (value >= 1_000f) {
+            "${((value / 100f).toInt()) / 10f}k"
+        } else {
+            value.toInt().toString()
+        }
+    }
+
+    private fun drawYAxisLabels(
+        canvas: Canvas,
+        chartLeft: Float,
+        chartTop: Float,
+        chartBottom: Float,
+        maxValue: Float
+    ) {
+        val h = chartBottom - chartTop
+        if (h <= 0f) return
+        val ticks = 4
+        val labelX = chartLeft - (4f * density)
+        for (i in 0..ticks) {
+            val frac = i / ticks.toFloat()
+            val y = chartBottom - frac * h
+            canvas.drawLine(chartLeft - (4f * density), y, chartLeft, y, axisPaint)
+            val v = maxValue * frac
+            canvas.drawText(formatAxisValue(v), labelX, y + (3f * density), yAxisLabelPaint)
         }
     }
 

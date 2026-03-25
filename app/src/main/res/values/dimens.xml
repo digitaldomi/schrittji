@@ -2,4 +2,6 @@
 <resources>
     <dimen name="chart_main_height">200dp</dimen>
     <dimen name="chart_main_min_expand">160dp</dimen>
+    <dimen name="main_summary_panel_height">220dp</dimen>
+    <dimen name="chart_y_axis_gutter">40dp</dimen>
 </resources>

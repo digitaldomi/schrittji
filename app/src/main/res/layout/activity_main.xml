@@ -438,23 +438,26 @@
                     android:minHeight="@dimen/chart_main_min_expand"
                     android:padding="4dp" />
 
-                <androidx.core.widget.NestedScrollView
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="@dimen/main_summary_panel_height"
                     android:layout_marginTop="6dp"
-                    android:fillViewport="false"
-                    android:maxHeight="200dp">
+                    android:background="@drawable/panel_background">
 
-                    <TextView
-                        android:id="@+id/textProjectionDetailSummary"
+                    <androidx.core.widget.NestedScrollView
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/panel_background"
-                        android:lineSpacingMultiplier="1.15"
+                        android:layout_height="match_parent"
+                        android:fillViewport="true"
                         android:padding="12dp"
-                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                        android:textColor="@color/brand_text" />
-                </androidx.core.widget.NestedScrollView>
+                        android:scrollbars="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/containerProjectionDetailSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                    </androidx.core.widget.NestedScrollView>
+                </FrameLayout>
             </LinearLayout>
 
             <LinearLayout
@@ -692,22 +695,26 @@
                     android:minHeight="@dimen/chart_main_min_expand"
                     android:padding="4dp" />
 
-                <androidx.core.widget.NestedScrollView
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="@dimen/main_summary_panel_height"
                     android:layout_marginTop="6dp"
-                    android:maxHeight="200dp">
+                    android:background="@drawable/panel_background">
 
-                    <TextView
-                        android:id="@+id/textChartSummary"
+                    <androidx.core.widget.NestedScrollView
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/panel_background"
-                        android:lineSpacingMultiplier="1.15"
+                        android:layout_height="match_parent"
+                        android:fillViewport="true"
                         android:padding="12dp"
-                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                        android:textColor="@color/brand_text" />
-                </androidx.core.widget.NestedScrollView>
+                        android:scrollbars="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/containerChartSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                    </androidx.core.widget.NestedScrollView>
+                </FrameLayout>
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>

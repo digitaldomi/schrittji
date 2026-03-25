@@ -149,12 +149,14 @@ class DayTimelineChartView @JvmOverloads constructor(
         textAlign = Paint.Align.CENTER
         textSize = 10f * scaledDensity
     }
-    private val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val yAxisLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
-        textAlign = Paint.Align.LEFT
-        textSize = 10f * scaledDensity
-        alpha = 170
+        textAlign = Paint.Align.RIGHT
+        textSize = 9f * scaledDensity
+        alpha = 200
     }
+
+    private val yAxisGutterPx = resources.getDimensionPixelSize(R.dimen.chart_y_axis_gutter).toFloat()
 
     private var buckets: List<TimelineBucket> = emptyList()
     private var maxValue: Float = 1f
@@ -236,7 +238,7 @@ class DayTimelineChartView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val chartLeft = paddingLeft + 12f * density
+        val chartLeft = paddingLeft + yAxisGutterPx
         val chartRight = width - paddingRight - 12f * density
         val chartTop = paddingTop + 10f * density
         val chartBottom = height - paddingBottom - 18f * density
@@ -244,7 +246,7 @@ class DayTimelineChartView @JvmOverloads constructor(
 
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
         canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint)
-        canvas.drawText("max ${formatValue(maxValue)}", chartLeft, chartTop - (6f * density), valuePaint)
+        drawYAxisLabels(canvas, chartLeft, chartTop, chartBottom, maxValue)
 
         val newHits = mutableListOf<Pair<RectF, WorkoutTapInfo>>()
 
@@ -477,6 +479,26 @@ class DayTimelineChartView @JvmOverloads constructor(
             val x = chartLeft + ((chartRight - chartLeft) * fraction)
             canvas.drawLine(x, chartBottom, x, chartBottom + (5f * density), axisPaint)
             canvas.drawText(label, x, chartBottom + (18f * density), labelPaint)
+        }
+    }
+
+    private fun drawYAxisLabels(
+        canvas: Canvas,
+        chartLeft: Float,
+        chartTop: Float,
+        chartBottom: Float,
+        maxValue: Float
+    ) {
+        val h = chartBottom - chartTop
+        if (h <= 0f) return
+        val ticks = 4
+        val labelX = chartLeft - (4f * density)
+        for (i in 0..ticks) {
+            val frac = i / ticks.toFloat()
+            val y = chartBottom - frac * h
+            canvas.drawLine(chartLeft - (4f * density), y, chartLeft, y, axisPaint)
+            val v = maxValue * frac
+            canvas.drawText(formatValue(v), labelX, y + (3f * density), yAxisLabelPaint)
         }
     }
 
