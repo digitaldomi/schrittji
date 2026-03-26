@@ -454,69 +454,39 @@ class MainActivity : AppCompatActivity() {
         val existingSteps = existingEntries.sumOf { it.count }
         addStatRow(
             R.color.chart_existing,
-            getString(R.string.summary_stat_existing_steps),
-            existingSteps.formatThousands()
+            getString(R.string.summary_section_recorded),
+            getString(
+                R.string.summary_recorded_overview,
+                existingSteps.formatThousands(),
+                exerciseSessions.size
+            )
         )
+        exerciseSessions.forEach { session ->
+            val dur = ChronoUnit.MINUTES.between(session.start, session.end).coerceAtLeast(1)
+            val line =
+                "${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)} · $dur min"
+            val (dr, tint) = when (session.type) {
+                WorkoutType.RUNNING ->
+                    R.drawable.ic_workout_run to R.color.chart_workout
+                WorkoutType.CYCLING ->
+                    R.drawable.ic_workout_cycle to R.color.chart_workout
+                WorkoutType.MINDFULNESS ->
+                    R.drawable.ic_workout_mindfulness to R.color.chart_workout_mindfulness
+            }
+            addWorkoutRow(dr, tint, line)
+        }
+
         if (includeSimulatedProjection) {
             addSpacer()
             addStatRow(
                 R.color.chart_projected,
-                getString(R.string.summary_stat_projected_steps),
-                projectedStepsForSummary.formatThousands()
+                getString(R.string.summary_section_projected),
+                getString(
+                    R.string.summary_projected_overview,
+                    projectedStepsForSummary.formatThousands(),
+                    projectedWorkoutsOnly.size
+                )
             )
-        } else {
-            addSpacer()
-            val tv = TextView(this)
-            tv.layoutParams = lp
-            tv.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodyMedium)
-            tv.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
-            tv.text = getString(R.string.summary_projection_future_only)
-            container.addView(tv)
-        }
-
-        hcExerciseReadError?.let {
-            addSpacer()
-            val err = TextView(this)
-            err.layoutParams = lp
-            err.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodySmall)
-            err.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
-            err.text = getString(R.string.summary_exercise_read_failed, it) + "\n" +
-                getString(R.string.summary_exercise_read_failed_hint)
-            container.addView(err)
-        }
-
-        if (exerciseSessions.isNotEmpty()) {
-            addSpacer()
-            val h = TextView(this)
-            h.layoutParams = lp
-            h.setTextAppearance(MaterialR.style.TextAppearance_Material3_TitleSmall)
-            h.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
-            h.text = getString(R.string.summary_recorded_header)
-            container.addView(h)
-            exerciseSessions.forEach { session ->
-                val dur = ChronoUnit.MINUTES.between(session.start, session.end).coerceAtLeast(1)
-                val line =
-                    "${session.start.format(workoutTimeFormatter)}–${session.end.format(workoutTimeFormatter)} · $dur min"
-                val (dr, tint) = when (session.type) {
-                    WorkoutType.RUNNING ->
-                        R.drawable.ic_workout_run to R.color.chart_workout
-                    WorkoutType.CYCLING ->
-                        R.drawable.ic_workout_cycle to R.color.chart_workout
-                    WorkoutType.MINDFULNESS ->
-                        R.drawable.ic_workout_mindfulness to R.color.chart_workout_mindfulness
-                }
-                addWorkoutRow(dr, tint, line)
-            }
-        }
-
-        if (projectedWorkoutsOnly.isNotEmpty()) {
-            addSpacer()
-            val h = TextView(this)
-            h.layoutParams = lp
-            h.setTextAppearance(MaterialR.style.TextAppearance_Material3_TitleSmall)
-            h.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
-            h.text = getString(R.string.summary_projected_planned_header)
-            container.addView(h)
             projectedWorkoutsOnly.forEach { workout ->
                 val dur = ChronoUnit.MINUTES.between(workout.start, workout.end).coerceAtLeast(1)
                 val stepsInWorkout = sumStepsInWindow(detail.slices, workout.start, workout.end)
@@ -538,16 +508,25 @@ class MainActivity : AppCompatActivity() {
                 }
                 addWorkoutRow(dr, tint, line)
             }
-        }
-
-        if (exerciseSessions.isEmpty() && projectedWorkoutsOnly.isEmpty() && hcExerciseReadError == null) {
+        } else {
             addSpacer()
             val tv = TextView(this)
             tv.layoutParams = lp
             tv.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodyMedium)
             tv.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
-            tv.text = getString(R.string.summary_no_workouts)
+            tv.text = getString(R.string.summary_projection_future_only)
             container.addView(tv)
+        }
+
+        hcExerciseReadError?.let {
+            addSpacer()
+            val err = TextView(this)
+            err.layoutParams = lp
+            err.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodySmall)
+            err.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
+            err.text = getString(R.string.summary_exercise_read_failed, it) + "\n" +
+                getString(R.string.summary_exercise_read_failed_hint)
+            container.addView(err)
         }
     }
 
