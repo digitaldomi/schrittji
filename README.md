@@ -37,6 +37,10 @@ A test signing key is included so release APKs install locally. Replace with you
 | `.github/workflows/` | Build and release automation |
 | `signing/schrittji-release.jks` | Local test keystore |
 
+## Credits
+
+The in-app **running** workout icon uses Google’s **Material Symbols** glyph *directions_run* (Apache 2.0), scaled to the app’s 24dp grid.
+
 ## License / disclaimer
 
 This tool is for **development and testing** of Health Connect consumers. Respect platform policies and user consent when handling health data.
