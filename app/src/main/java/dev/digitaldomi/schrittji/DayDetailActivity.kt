@@ -8,7 +8,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import dev.digitaldomi.schrittji.chart.ProjectionTimeline
 import dev.digitaldomi.schrittji.chart.TimelineSeries
@@ -69,20 +68,6 @@ class DayDetailActivity : AppCompatActivity() {
         )
         binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
         binding.toolbar.setNavigationOnClickListener { finish() }
-
-        binding.chartDayTimeline.setOnWorkoutTapListener { info ->
-            val title = when {
-                info.title.isNotBlank() -> info.title
-                info.kind == TimelineWorkoutKind.RUNNING -> getString(R.string.workout_title_running)
-                info.kind == TimelineWorkoutKind.CYCLING -> getString(R.string.workout_title_cycling)
-                else -> getString(R.string.workout_title_mindfulness)
-            }
-            MaterialAlertDialogBuilder(this)
-                .setTitle(title)
-                .setMessage(info.detail)
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
-        }
 
         binding.buttonPreviousDay.setOnClickListener {
             selectedDate = selectedDate.minusDays(1)

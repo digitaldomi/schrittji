@@ -18,12 +18,10 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILA
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.R as MaterialR
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dev.digitaldomi.schrittji.chart.DualSeriesBarPoint
 import dev.digitaldomi.schrittji.chart.ProjectionTimeline
 import dev.digitaldomi.schrittji.chart.TimelineSeries
 import dev.digitaldomi.schrittji.chart.TimelineBarEntry
-import dev.digitaldomi.schrittji.chart.TimelineWorkoutKind
 import dev.digitaldomi.schrittji.databinding.ActivityMainBinding
 import dev.digitaldomi.schrittji.health.HealthConnectExerciseSession
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
@@ -132,19 +130,6 @@ class MainActivity : AppCompatActivity() {
         binding.buttonThisWeek.setOnClickListener {
             selectedWeekStart = weekStartMonday(LocalDate.now())
             renderOverviewChart(simulationCoordinator.loadConfig())
-        }
-        binding.chartProjectionDetail.setOnWorkoutTapListener { info ->
-            val title = when {
-                info.title.isNotBlank() -> info.title
-                info.kind == TimelineWorkoutKind.RUNNING -> getString(R.string.workout_title_running)
-                info.kind == TimelineWorkoutKind.CYCLING -> getString(R.string.workout_title_cycling)
-                else -> getString(R.string.workout_title_mindfulness)
-            }
-            MaterialAlertDialogBuilder(this)
-                .setTitle(title)
-                .setMessage(info.detail)
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
         }
     }
 
@@ -405,17 +390,10 @@ class MainActivity : AppCompatActivity() {
             isToday -> todayProjectedEntries.sumOf { it.value.toLong() }
             else -> 0L
         }
-        val projectedMinuteCountForSummary = when {
-            showFutureProjection -> detail.slices.size
-            isToday -> todayProjectedEntries.size
-            else -> 0
-        }
-
         populateDayDetailSummary(
             existingEntries = existingEntries,
             detail = detail,
             projectedStepsForSummary = projectedStepsForSummary,
-            projectedMinuteCount = projectedMinuteCountForSummary,
             exerciseSessions = exerciseSessions,
             projectedWorkoutsOnly = projectedWorkoutsOnly,
             hcExerciseReadError = hcExerciseResult.queryError,
@@ -427,7 +405,6 @@ class MainActivity : AppCompatActivity() {
         existingEntries: List<HealthConnectStepRecordEntry>,
         detail: ProjectedStepDayDetail,
         projectedStepsForSummary: Long,
-        projectedMinuteCount: Int,
         exerciseSessions: List<HealthConnectExerciseSession>,
         projectedWorkoutsOnly: List<WorkoutPlan>,
         hcExerciseReadError: String?,
@@ -485,12 +462,6 @@ class MainActivity : AppCompatActivity() {
                 R.color.chart_projected,
                 getString(R.string.summary_stat_projected_steps),
                 projectedStepsForSummary.formatThousands()
-            )
-            addStatRow(
-                R.color.chart_projected,
-                getString(R.string.summary_stat_projection_records, projectedMinuteCount),
-                "",
-                showValue = false
             )
         } else {
             addSpacer()
@@ -575,19 +546,6 @@ class MainActivity : AppCompatActivity() {
             tv.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodyMedium)
             tv.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
             tv.text = getString(R.string.summary_no_workouts)
-            container.addView(tv)
-        } else if (
-            includeSimulatedProjection &&
-            exerciseSessions.isEmpty() &&
-            projectedWorkoutsOnly.isNotEmpty() &&
-            hcExerciseReadError == null
-        ) {
-            addSpacer()
-            val tv = TextView(this)
-            tv.layoutParams = lp
-            tv.setTextAppearance(MaterialR.style.TextAppearance_Material3_BodySmall)
-            tv.setTextColor(ContextCompat.getColor(this, R.color.brand_text))
-            tv.text = getString(R.string.main_day_hc_workouts_missing_hint)
             container.addView(tv)
         }
     }

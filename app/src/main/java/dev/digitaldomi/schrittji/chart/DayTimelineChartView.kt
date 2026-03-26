@@ -6,13 +6,10 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.view.GestureDetector
 import android.view.View.MeasureSpec
-import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
-import androidx.core.view.GestureDetectorCompat
 import dev.digitaldomi.schrittji.R
 import kotlin.math.max
 import kotlin.math.min
@@ -35,13 +32,6 @@ private enum class WorkoutOverlayCategory {
     MINDFULNESS_RECORDED,
     MINDFULNESS_PROJECTED
 }
-
-data class WorkoutTapInfo(
-    val kind: TimelineWorkoutKind,
-    val title: String,
-    val detail: String,
-    val isProjected: Boolean
-)
 
 data class TimelineBarEntry(
     val startMinute: Int,
@@ -160,42 +150,14 @@ class DayTimelineChartView @JvmOverloads constructor(
 
     private var buckets: List<TimelineBucket> = emptyList()
     private var maxValue: Float = 1f
+    private var yAxisScale: ChartAxisLabels.Scale = ChartAxisLabels.computeScale(1f)
     private var workoutOverlays: List<WorkoutOverlay> = emptyList()
-    private var hitTargets: List<Pair<RectF, WorkoutTapInfo>> = emptyList()
     /** When set (e.g. for “today”), existing/HC data is clipped to before this minute-of-day; projected after. */
     private var nowMarkerMinuteOfDay: Float? = null
 
     private val runDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_run)?.mutate()
     private val cycleDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_cycle)?.mutate()
     private val mindfulnessDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_mindfulness)?.mutate()
-
-    private var workoutTapListener: ((WorkoutTapInfo) -> Unit)? = null
-
-    private val gestureDetector = GestureDetectorCompat(
-        context,
-        object : GestureDetector.SimpleOnGestureListener() {
-            override fun onSingleTapUp(e: MotionEvent): Boolean {
-                val x = e.x
-                val y = e.y
-                hitTargets.forEach { (rect, info) ->
-                    if (rect.contains(x, y)) {
-                        workoutTapListener?.invoke(info)
-                        performClick()
-                        return true
-                    }
-                }
-                return false
-            }
-        }
-    )
-
-    init {
-        isClickable = true
-    }
-
-    fun setOnWorkoutTapListener(listener: ((WorkoutTapInfo) -> Unit)?) {
-        workoutTapListener = listener
-    }
 
     /**
      * Optional vertical “now” line and bucket clipping: minute-of-day in [0, 1440), fractional allowed.
@@ -212,6 +174,7 @@ class DayTimelineChartView @JvmOverloads constructor(
             1f,
             buckets.maxOfOrNull { max(it.existingValue, it.projectedValue) } ?: 1f
         )
+        yAxisScale = ChartAxisLabels.computeScale(maxValue)
         invalidate()
     }
 
@@ -230,11 +193,6 @@ class DayTimelineChartView @JvmOverloads constructor(
         )
     }
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        val handled = gestureDetector.onTouchEvent(event)
-        return handled || super.onTouchEvent(event)
-    }
-
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
@@ -246,9 +204,7 @@ class DayTimelineChartView @JvmOverloads constructor(
 
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
         canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint)
-        drawYAxisLabels(canvas, chartLeft, chartTop, chartBottom, maxValue)
-
-        val newHits = mutableListOf<Pair<RectF, WorkoutTapInfo>>()
+        drawYAxisLabels(canvas, chartLeft, chartTop, chartBottom)
 
         if (buckets.isEmpty()) {
             canvas.drawText(
@@ -258,7 +214,6 @@ class DayTimelineChartView @JvmOverloads constructor(
                 labelPaint
             )
             drawHourLabels(canvas, chartLeft, chartRight, chartBottom)
-            hitTargets = emptyList()
             return
         }
 
@@ -295,7 +250,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX - (groupedWidth * 0.7f),
                     value = bucket.existingValue,
-                    maxValue = maxValue,
+                    maxValue = yAxisScale.axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = groupedWidth,
@@ -305,7 +260,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX + (groupedWidth * 0.7f),
                     value = bucket.projectedValue,
-                    maxValue = maxValue,
+                    maxValue = yAxisScale.axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = groupedWidth,
@@ -316,7 +271,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX,
                     value = bucket.existingValue,
-                    maxValue = maxValue,
+                    maxValue = yAxisScale.axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = singleWidth,
@@ -327,7 +282,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX,
                     value = bucket.projectedValue,
-                    maxValue = maxValue,
+                    maxValue = yAxisScale.axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = singleWidth,
@@ -359,7 +314,6 @@ class DayTimelineChartView @JvmOverloads constructor(
         }
 
         val iconSizePx = 18f * density
-        val touchPad = 12f * density
         val iconLayouts = layoutWorkoutIcons(
             overlays = workoutOverlays,
             chartLeft = chartLeft,
@@ -386,22 +340,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                 drawable.draw(canvas)
             }
 
-            val tap = WorkoutTapInfo(
-                kind = overlay.kind,
-                title = overlay.title,
-                detail = overlay.detail,
-                isProjected = overlay.isProjected
-            )
-            newHits.add(
-                RectF(
-                    centerX - touchPad,
-                    iconTop - touchPad * 0.5f,
-                    centerX + touchPad,
-                    iconBottom + touchPad * 0.5f
-                ) to tap
-            )
         }
-        hitTargets = newHits
 
         drawHourLabels(canvas, chartLeft, chartRight, chartBottom)
     }
@@ -486,19 +425,17 @@ class DayTimelineChartView @JvmOverloads constructor(
         canvas: Canvas,
         chartLeft: Float,
         chartTop: Float,
-        chartBottom: Float,
-        maxValue: Float
+        chartBottom: Float
     ) {
         val h = chartBottom - chartTop
-        if (h <= 0f) return
-        val ticks = 4
+        if (h <= 0f || yAxisScale.axisMax <= 0f) return
         val labelX = chartLeft - (4f * density)
-        for (i in 0..ticks) {
-            val frac = i / ticks.toFloat()
+        for (v in ChartAxisLabels.tickValues(yAxisScale)) {
+            if (v > yAxisScale.axisMax + 0.01f) continue
+            val frac = (v / yAxisScale.axisMax).coerceIn(0f, 1f)
             val y = chartBottom - frac * h
             canvas.drawLine(chartLeft - (4f * density), y, chartLeft, y, axisPaint)
-            val v = maxValue * frac
-            canvas.drawText(formatValue(v), labelX, y + (3f * density), yAxisLabelPaint)
+            canvas.drawText(ChartAxisLabels.formatTick(v), labelX, y + (3f * density), yAxisLabelPaint)
         }
     }
 
@@ -520,14 +457,6 @@ class DayTimelineChartView @JvmOverloads constructor(
             chartBottom
         )
         canvas.drawRoundRect(rect, 5f * density, 5f * density, paint)
-    }
-
-    private fun formatValue(value: Float): String {
-        return if (value >= 1_000f) {
-            "${((value / 100f).toInt()) / 10f}k"
-        } else {
-            value.toInt().toString()
-        }
     }
 
     private fun drawWorkoutMarker(
