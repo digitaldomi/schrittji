@@ -22,6 +22,7 @@ import dev.digitaldomi.schrittji.chart.DualSeriesBarPoint
 import dev.digitaldomi.schrittji.chart.ProjectionTimeline
 import dev.digitaldomi.schrittji.chart.TimelineSeries
 import dev.digitaldomi.schrittji.chart.TimelineBarEntry
+import dev.digitaldomi.schrittji.chart.TimelineWorkoutKind
 import dev.digitaldomi.schrittji.databinding.ActivityMainBinding
 import dev.digitaldomi.schrittji.health.HealthConnectExerciseSession
 import dev.digitaldomi.schrittji.health.HealthConnectGateway
