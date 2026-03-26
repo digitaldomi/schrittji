@@ -11,6 +11,9 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
+/** Minimum gap between any two workout sessions (cardio or mindfulness), in minutes. */
+private const val WORKOUT_GAP_MINUTES = 15L
+
 data class MinuteStepSlice(
     val start: ZonedDateTime,
     val end: ZonedDateTime,
@@ -713,6 +716,9 @@ class StepSimulationEngine {
     ): List<WorkoutPlan> {
         val workouts = mutableListOf<WorkoutPlan>()
 
+        fun blockedIntervals(): List<Pair<ZonedDateTime, ZonedDateTime>> =
+            workouts.filter { it.start.isBefore(it.end) }.map { it.start to it.end }.sortedBy { it.first }
+
         if (config.runningEnabled && date.dayOfWeek in weeklyRoutine.runningDays) {
             val duration = randomDuration(
                 config.runningMinDurationMinutes,
@@ -721,23 +727,34 @@ class StepSimulationEngine {
                 90,
                 random
             )
-            val start = (if (isWeekend) {
+            val preferredStart = (if (isWeekend) {
                 wakeTime.plusMinutes(random.nextInt(55, 120).toLong())
             } else {
                 date.atStartOfDay(wakeTime.zone).plusHours(19).plusMinutes(6)
                     .plusMinutes(random.nextInt(-24, 28).toLong())
             }).coerceAfter(wakeTime.plusMinutes(25)).coerceBefore(sleepTime.minusMinutes(duration.toLong() + 20))
-            val end = start.plusMinutes(duration.toLong())
-            val paceMetersPerMinute = random.nextDouble(155.0, 205.0)
-            workouts += WorkoutPlan(
-                type = WorkoutType.RUNNING,
-                start = start,
-                end = end,
-                title = "Running",
-                notes = null,
-                distanceMeters = duration * paceMetersPerMinute,
-                kilocalories = duration * random.nextDouble(10.5, 14.5)
-            )
+            val earliest = wakeTime.plusMinutes(25)
+            val latest = sleepTime.minusMinutes(duration.toLong() + 20)
+            findNonOverlappingStart(
+                preferredStart = preferredStart,
+                earliest = earliest,
+                latestStart = latest,
+                durationMinutes = duration,
+                blocked = emptyList(),
+                random = random
+            )?.let { start ->
+                val end = start.plusMinutes(duration.toLong())
+                val paceMetersPerMinute = random.nextDouble(155.0, 205.0)
+                workouts += WorkoutPlan(
+                    type = WorkoutType.RUNNING,
+                    start = start,
+                    end = end,
+                    title = "Running",
+                    notes = null,
+                    distanceMeters = duration * paceMetersPerMinute,
+                    kilocalories = duration * random.nextDouble(10.5, 14.5)
+                )
+            }
         }
 
         if (config.cyclingEnabled && date.dayOfWeek in weeklyRoutine.cyclingDays) {
@@ -748,23 +765,34 @@ class StepSimulationEngine {
                 180,
                 random
             )
-            val start = (if (isWeekend) {
+            val preferredStart = (if (isWeekend) {
                 wakeTime.plusMinutes(random.nextInt(95, 180).toLong())
             } else {
                 date.atStartOfDay(wakeTime.zone).plusHours(18).plusMinutes(18)
                     .plusMinutes(random.nextInt(-26, 34).toLong())
             }).coerceAfter(wakeTime.plusMinutes(35)).coerceBefore(sleepTime.minusMinutes(duration.toLong() + 25))
-            val end = start.plusMinutes(duration.toLong())
-            val distanceMetersPerMinute = random.nextDouble(260.0, 420.0)
-            workouts += WorkoutPlan(
-                type = WorkoutType.CYCLING,
-                start = start,
-                end = end,
-                title = "Cycling",
-                notes = null,
-                distanceMeters = duration * distanceMetersPerMinute,
-                kilocalories = duration * random.nextDouble(7.0, 11.5)
-            )
+            val earliest = wakeTime.plusMinutes(35)
+            val latest = sleepTime.minusMinutes(duration.toLong() + 25)
+            findNonOverlappingStart(
+                preferredStart = preferredStart,
+                earliest = earliest,
+                latestStart = latest,
+                durationMinutes = duration,
+                blocked = blockedIntervals(),
+                random = random
+            )?.let { start ->
+                val end = start.plusMinutes(duration.toLong())
+                val distanceMetersPerMinute = random.nextDouble(260.0, 420.0)
+                workouts += WorkoutPlan(
+                    type = WorkoutType.CYCLING,
+                    start = start,
+                    end = end,
+                    title = "Cycling",
+                    notes = null,
+                    distanceMeters = duration * distanceMetersPerMinute,
+                    kilocalories = duration * random.nextDouble(7.0, 11.5)
+                )
+            }
         }
 
         if (config.mindfulnessEnabled && date.dayOfWeek in weeklyRoutine.mindfulnessDays) {
@@ -775,10 +803,7 @@ class StepSimulationEngine {
                 45,
                 random
             )
-            val blocked = workouts
-                .filter { it.start.isBefore(it.end) }
-                .map { it.start to it.end }
-                .sortedBy { it.first }
+            val blocked = blockedIntervals()
             placeMindfulnessSession(
                 wakeTime = wakeTime,
                 sleepTime = sleepTime,
@@ -803,6 +828,68 @@ class StepSimulationEngine {
         return workouts.filter { it.start.isBefore(it.end) }
     }
 
+    /**
+     * True if [aStart],[aEnd) conflicts with [bStart],[bEnd) including [WORKOUT_GAP_MINUTES] gap.
+     */
+    private fun workoutIntervalsConflict(
+        aStart: ZonedDateTime,
+        aEnd: ZonedDateTime,
+        bStart: ZonedDateTime,
+        bEnd: ZonedDateTime
+    ): Boolean {
+        return aStart.isBefore(bEnd.plusMinutes(WORKOUT_GAP_MINUTES)) &&
+            aEnd.isAfter(bStart.minusMinutes(WORKOUT_GAP_MINUTES))
+    }
+
+    private fun conflictsAnyBlocked(
+        start: ZonedDateTime,
+        end: ZonedDateTime,
+        blocked: List<Pair<ZonedDateTime, ZonedDateTime>>
+    ): Boolean {
+        return blocked.any { (b, e) -> workoutIntervalsConflict(start, end, b, e) }
+    }
+
+    /**
+     * Picks a session start in [earliest, latestStart] so the session does not overlap (with gap)
+     * any [blocked] interval. Tries random samples then a coarse forward scan.
+     */
+    private fun findNonOverlappingStart(
+        preferredStart: ZonedDateTime,
+        earliest: ZonedDateTime,
+        latestStart: ZonedDateTime,
+        durationMinutes: Int,
+        blocked: List<Pair<ZonedDateTime, ZonedDateTime>>,
+        random: Random
+    ): ZonedDateTime? {
+        if (earliest.isAfter(latestStart)) return null
+        val dur = durationMinutes.toLong()
+        fun ok(s: ZonedDateTime): Boolean {
+            val e = s.plusMinutes(dur)
+            if (!s.isBefore(e)) return false
+            return !conflictsAnyBlocked(s, e, blocked)
+        }
+        val pref = when {
+            preferredStart.isBefore(earliest) -> earliest
+            preferredStart.isAfter(latestStart) -> latestStart
+            else -> preferredStart
+        }.truncatedTo(ChronoUnit.MINUTES)
+        if (ok(pref)) return pref
+        val span = ChronoUnit.MINUTES.between(earliest, latestStart).toInt().coerceAtLeast(0)
+        repeat(64) {
+            val off = if (span == 0) 0 else random.nextInt(0, span + 1)
+            val s = earliest.plusMinutes(off.toLong()).truncatedTo(ChronoUnit.MINUTES)
+            if (ok(s)) return s
+        }
+        var t = earliest.truncatedTo(ChronoUnit.MINUTES)
+        val endLimit = latestStart.plusMinutes(1)
+        while (!t.isAfter(latestStart)) {
+            if (ok(t)) return t
+            t = t.plusMinutes(5)
+            if (t.isAfter(endLimit)) break
+        }
+        return null
+    }
+
     private fun placeMindfulnessSession(
         wakeTime: ZonedDateTime,
         sleepTime: ZonedDateTime,
@@ -812,14 +899,11 @@ class StepSimulationEngine {
         date: LocalDate,
         random: Random
     ): Pair<ZonedDateTime, ZonedDateTime>? {
-        val buffer = 15L
         val dayStart = date.atStartOfDay(zone)
         val dur = durationMinutes.toLong()
 
         fun overlaps(aStart: ZonedDateTime, aEnd: ZonedDateTime): Boolean {
-            return blocked.any { (b, e) ->
-                aStart.isBefore(e.plusMinutes(buffer)) && aEnd.isAfter(b.minusMinutes(buffer))
-            }
+            return conflictsAnyBlocked(aStart, aEnd, blocked)
         }
 
         fun latestEndBeforeNoon(): ZonedDateTime? =
@@ -828,7 +912,7 @@ class StepSimulationEngine {
         // Morning window: after wake + buffer, before noon, not overlapping run/cycle
         val morningEarliest = maxOf(
             wakeTime.plusMinutes(25),
-            latestEndBeforeNoon()?.plusMinutes(buffer) ?: wakeTime.plusMinutes(25)
+            latestEndBeforeNoon()?.plusMinutes(WORKOUT_GAP_MINUTES) ?: wakeTime.plusMinutes(25)
         )
         val morningLatest = minOf(
             dayStart.plusHours(12),
@@ -838,7 +922,7 @@ class StepSimulationEngine {
         // Evening window: after 19:00 and after last blocking workout ends
         val eveningEarliest = maxOf(
             dayStart.plusHours(19),
-            blocked.maxOfOrNull { it.second }?.plusMinutes(buffer) ?: dayStart.plusHours(19)
+            blocked.maxOfOrNull { it.second }?.plusMinutes(WORKOUT_GAP_MINUTES) ?: dayStart.plusHours(19)
         )
         val eveningLatest = sleepTime.minusMinutes(20)
 
