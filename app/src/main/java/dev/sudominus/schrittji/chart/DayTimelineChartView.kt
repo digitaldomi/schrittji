@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji.chart
+package dev.sudominus.schrittji.chart
 
 import android.content.Context
 import android.graphics.Canvas
@@ -6,14 +6,11 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.view.GestureDetector
 import android.view.View.MeasureSpec
-import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
-import androidx.core.view.GestureDetectorCompat
-import dev.digitaldomi.schrittji.R
+import dev.sudominus.schrittji.R
 import kotlin.math.max
 import kotlin.math.min
 
@@ -25,15 +22,16 @@ enum class TimelineSeries {
 
 enum class TimelineWorkoutKind {
     RUNNING,
-    CYCLING
+    CYCLING,
+    MINDFULNESS
 }
 
-data class WorkoutTapInfo(
-    val kind: TimelineWorkoutKind,
-    val title: String,
-    val detail: String,
-    val isProjected: Boolean
-)
+private enum class WorkoutOverlayCategory {
+    CARDIO_RECORDED,
+    CARDIO_PROJECTED,
+    MINDFULNESS_RECORDED,
+    MINDFULNESS_PROJECTED
+}
 
 data class TimelineBarEntry(
     val startMinute: Int,
@@ -44,7 +42,13 @@ data class TimelineBarEntry(
     val workoutKind: TimelineWorkoutKind? = null,
     val workoutTitle: String? = null,
     val workoutDetail: String? = null,
-    val workoutIsProjected: Boolean = true
+    val workoutIsProjected: Boolean = true,
+    /**
+     * Inclusive start / exclusive end of the interval in seconds since local midnight (0..86400).
+     * When set, clipping uses sub-minute precision; otherwise [startMinute] and [endMinute] are used as minute indices.
+     */
+    val startSecondOfDay: Int? = null,
+    val endSecondOfDay: Int? = null
 )
 
 class DayTimelineChartView @JvmOverloads constructor(
@@ -56,7 +60,10 @@ class DayTimelineChartView @JvmOverloads constructor(
     private val projectedColor = context.getColor(R.color.chart_projected)
     private val projectedEmphasizedColor = context.getColor(R.color.brand_primary_dark)
     private val existingColor = context.getColor(R.color.chart_existing)
-    private val workoutColor = context.getColor(R.color.chart_workout)
+    private val workoutColorRecorded = context.getColor(R.color.chart_workout)
+    private val workoutColorProjected = context.getColor(R.color.chart_workout_projected)
+    private val workoutColorMindfulnessRecorded = context.getColor(R.color.chart_workout_mindfulness)
+    private val workoutColorMindfulnessProjected = context.getColor(R.color.chart_workout_mindfulness_projected)
     private val textColor = context.getColor(R.color.brand_text)
     private val axisColor = context.getColor(R.color.panel_stroke)
     private val bucketCount = 24
@@ -76,21 +83,6 @@ class DayTimelineChartView @JvmOverloads constructor(
         color = existingColor
         alpha = 210
     }
-    private val workoutPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = workoutColor
-        alpha = 220
-    }
-    private val workoutStripPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = workoutColor
-        alpha = 235
-    }
-    private val workoutStripPaintProjected = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = workoutColor
-        alpha = 200
-    }
     private val workoutUnderlayRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = context.getColor(R.color.chart_workout_underlay)
@@ -99,66 +91,65 @@ class DayTimelineChartView @JvmOverloads constructor(
         style = Paint.Style.FILL
         color = context.getColor(R.color.chart_workout_underlay_projected)
     }
+    private val workoutUnderlayMindfulnessRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = context.getColor(R.color.chart_workout_underlay_mindfulness)
+    }
+    private val workoutUnderlayMindfulnessProjectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = context.getColor(R.color.chart_workout_underlay_mindfulness_projected)
+    }
     private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1f * density
         color = axisColor
+    }
+    private val nowLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2f * density
+        color = context.getColor(R.color.chart_now_line)
     }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
         textSize = 10f * scaledDensity
     }
-    private val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val yAxisLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
-        textAlign = Paint.Align.LEFT
-        textSize = 10f * scaledDensity
-        alpha = 170
+        textAlign = Paint.Align.RIGHT
+        textSize = 9f * scaledDensity
+        alpha = 200
     }
+
+    private val yAxisGutterPx = resources.getDimensionPixelSize(R.dimen.chart_y_axis_gutter).toFloat()
 
     private var buckets: List<TimelineBucket> = emptyList()
     private var maxValue: Float = 1f
+    private var yAxisScale: ChartAxisLabels.Scale = ChartAxisLabels.computeScale(1f)
     private var workoutOverlays: List<WorkoutOverlay> = emptyList()
-    private var hitTargets: List<Pair<RectF, WorkoutTapInfo>> = emptyList()
+    /** When set (e.g. for “today”), existing/HC data is clipped to before this minute-of-day; projected after. */
+    private var nowMarkerMinuteOfDay: Float? = null
 
     private val runDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_run)?.mutate()
     private val cycleDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_cycle)?.mutate()
+    private val mindfulnessDrawable = ContextCompat.getDrawable(context, R.drawable.ic_workout_mindfulness)?.mutate()
 
-    private var workoutTapListener: ((WorkoutTapInfo) -> Unit)? = null
-
-    private val gestureDetector = GestureDetectorCompat(
-        context,
-        object : GestureDetector.SimpleOnGestureListener() {
-            override fun onSingleTapUp(e: MotionEvent): Boolean {
-                val x = e.x
-                val y = e.y
-                hitTargets.forEach { (rect, info) ->
-                    if (rect.contains(x, y)) {
-                        workoutTapListener?.invoke(info)
-                        performClick()
-                        return true
-                    }
-                }
-                return false
-            }
-        }
-    )
-
-    init {
-        isClickable = true
-    }
-
-    fun setOnWorkoutTapListener(listener: ((WorkoutTapInfo) -> Unit)?) {
-        workoutTapListener = listener
+    /**
+     * Optional vertical “now” line and bucket clipping: minute-of-day in [0, 1440), fractional allowed.
+     * Pass `null` for past/future days or when no split is needed.
+     */
+    fun setNowMarkerMinuteOfDay(minuteOfDay: Float?) {
+        nowMarkerMinuteOfDay = minuteOfDay
     }
 
     fun submitEntries(entries: List<TimelineBarEntry>) {
-        buckets = buildBuckets(entries)
-        workoutOverlays = extractWorkoutOverlays(entries)
+        buckets = buildBuckets(entries, nowMarkerMinuteOfDay)
+        workoutOverlays = extractWorkoutOverlays(entries, nowMarkerMinuteOfDay)
         maxValue = max(
             1f,
             buckets.maxOfOrNull { max(it.existingValue, it.projectedValue) } ?: 1f
         )
+        yAxisScale = ChartAxisLabels.computeScale(maxValue)
         invalidate()
     }
 
@@ -177,15 +168,10 @@ class DayTimelineChartView @JvmOverloads constructor(
         )
     }
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        val handled = gestureDetector.onTouchEvent(event)
-        return handled || super.onTouchEvent(event)
-    }
-
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val chartLeft = paddingLeft + 12f * density
+        val chartLeft = paddingLeft + yAxisGutterPx
         val chartRight = width - paddingRight - 12f * density
         val chartTop = paddingTop + 10f * density
         val chartBottom = height - paddingBottom - 18f * density
@@ -193,9 +179,7 @@ class DayTimelineChartView @JvmOverloads constructor(
 
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
         canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint)
-        canvas.drawText("max ${formatValue(maxValue)}", chartLeft, chartTop - (6f * density), valuePaint)
-
-        val newHits = mutableListOf<Pair<RectF, WorkoutTapInfo>>()
+        drawYAxisLabels(canvas, chartLeft, chartTop, chartBottom)
 
         if (buckets.isEmpty()) {
             canvas.drawText(
@@ -205,7 +189,6 @@ class DayTimelineChartView @JvmOverloads constructor(
                 labelPaint
             )
             drawHourLabels(canvas, chartLeft, chartRight, chartBottom)
-            hitTargets = emptyList()
             return
         }
 
@@ -213,17 +196,19 @@ class DayTimelineChartView @JvmOverloads constructor(
         val groupedWidth = (slotWidth * 0.32f).coerceAtLeast(2.5f * density)
         val singleWidth = (slotWidth * 0.72f).coerceAtLeast(6f * density)
 
-        val workoutStripHeight = 7f * density
-        val workoutStripBottom = chartBottom - (2f * density)
-        val workoutStripTop = workoutStripBottom - workoutStripHeight
+        nowMarkerMinuteOfDay?.let { nowM ->
+            val xNow = minuteToX(nowM, chartLeft, chartWidth)
+            canvas.drawLine(xNow, chartTop, xNow, chartBottom, nowLinePaint)
+            labelPaint.textAlign = Paint.Align.CENTER
+            canvas.drawText(context.getString(R.string.chart_now_label), xNow, chartTop - (6f * density), labelPaint)
+        }
 
         workoutOverlays.forEach { overlay ->
-            val xStart = minuteToX(overlay.startMinute, chartLeft, chartWidth)
-            val xEnd = minuteToX(overlay.endMinute, chartLeft, chartWidth)
+            val xStart = minuteToX(overlay.startMinuteFloat, chartLeft, chartWidth)
+            val xEnd = minuteToX(overlay.endMinuteFloat, chartLeft, chartWidth)
             val left = min(xStart, xEnd)
             val right = max(xStart, xEnd).coerceAtLeast(left + (3f * density))
-            val underPaint = if (overlay.isProjected) workoutUnderlayProjectedPaint else workoutUnderlayRecordedPaint
-            canvas.drawRect(left, chartTop, right, chartBottom, underPaint)
+            canvas.drawRect(left, chartTop, right, chartBottom, underlayPaintFor(overlay.category))
         }
 
         buckets.forEachIndexed { index, bucket ->
@@ -236,7 +221,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX - (groupedWidth * 0.7f),
                     value = bucket.existingValue,
-                    maxValue = maxValue,
+                    maxValue = yAxisScale.axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = groupedWidth,
@@ -246,7 +231,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX + (groupedWidth * 0.7f),
                     value = bucket.projectedValue,
-                    maxValue = maxValue,
+                    maxValue = yAxisScale.axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = groupedWidth,
@@ -257,7 +242,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX,
                     value = bucket.existingValue,
-                    maxValue = maxValue,
+                    maxValue = yAxisScale.axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = singleWidth,
@@ -268,7 +253,7 @@ class DayTimelineChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX,
                     value = bucket.projectedValue,
-                    maxValue = maxValue,
+                    maxValue = yAxisScale.axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = singleWidth,
@@ -276,39 +261,16 @@ class DayTimelineChartView @JvmOverloads constructor(
                 )
             }
 
-            if (bucket.workoutMarker) {
-                drawWorkoutMarker(
-                    canvas = canvas,
-                    centerX = centerX,
-                    chartTop = chartTop,
-                    barWidth = singleWidth.coerceAtLeast(8f * density)
-                )
-            }
-        }
-
-        workoutOverlays.forEach { overlay ->
-            val xStart = minuteToX(overlay.startMinute, chartLeft, chartWidth)
-            val xEnd = minuteToX(overlay.endMinute, chartLeft, chartWidth)
-            val left = min(xStart, xEnd)
-            val right = max(xStart, xEnd).coerceAtLeast(left + (3f * density))
-            val paint = if (overlay.isProjected) workoutStripPaintProjected else workoutStripPaint
-            canvas.drawRoundRect(
-                RectF(left, workoutStripTop, right, workoutStripBottom),
-                3f * density,
-                3f * density,
-                paint
-            )
         }
 
         val iconSizePx = 18f * density
-        val touchPad = 12f * density
         val iconLayouts = layoutWorkoutIcons(
             overlays = workoutOverlays,
             chartLeft = chartLeft,
             chartWidth = chartWidth,
             chartTop = chartTop,
             iconSize = iconSizePx,
-            workoutStripTop = workoutStripTop
+            chartBottom = chartBottom
         )
         iconLayouts.forEach { (overlay, centerX, iconTop) ->
             val iconLeft = (centerX - iconSizePx / 2f).toInt()
@@ -319,36 +281,26 @@ class DayTimelineChartView @JvmOverloads constructor(
             val drawable = when (overlay.kind) {
                 TimelineWorkoutKind.RUNNING -> runDrawable
                 TimelineWorkoutKind.CYCLING -> cycleDrawable
+                TimelineWorkoutKind.MINDFULNESS -> mindfulnessDrawable
             }
             if (drawable != null) {
-                val tint = workoutColor
+                val tint = iconTintFor(overlay.category)
                 DrawableCompat.setTint(drawable, tint)
                 drawable.bounds = Rect(iconLeft, iconTopI, iconRight, iconBottom)
                 drawable.draw(canvas)
             }
 
-            val tap = WorkoutTapInfo(
-                kind = overlay.kind,
-                title = overlay.title,
-                detail = overlay.detail,
-                isProjected = overlay.isProjected
-            )
-            newHits.add(
-                RectF(
-                    centerX - touchPad,
-                    iconTop - touchPad * 0.5f,
-                    centerX + touchPad,
-                    iconBottom + touchPad * 0.5f
-                ) to tap
-            )
         }
-        hitTargets = newHits
 
         drawHourLabels(canvas, chartLeft, chartRight, chartBottom)
     }
 
     private fun minuteToX(minute: Int, chartLeft: Float, chartWidth: Float): Float {
-        val m = minute.coerceIn(0, 1440)
+        return minuteToX(minute.toFloat(), chartLeft, chartWidth)
+    }
+
+    private fun minuteToX(minute: Float, chartLeft: Float, chartWidth: Float): Float {
+        val m = minute.coerceIn(0f, 1440f)
         return chartLeft + (m / 1440f) * chartWidth
     }
 
@@ -361,7 +313,7 @@ class DayTimelineChartView @JvmOverloads constructor(
         chartWidth: Float,
         chartTop: Float,
         iconSize: Float,
-        workoutStripTop: Float
+        chartBottom: Float
     ): List<Triple<WorkoutOverlay, Float, Float>> {
         if (overlays.isEmpty()) return emptyList()
 
@@ -369,13 +321,13 @@ class DayTimelineChartView @JvmOverloads constructor(
         val verticalGap = 4f * density
         val baseIconTop = chartTop + (6f * density)
         val maxLane = 8
-        val minIconBottom = workoutStripTop - (2f * density)
-        val sorted = overlays.sortedWith(compareBy({ it.startMinute }, { it.endMinute }))
+        val minIconBottom = chartBottom - (8f * density)
+        val sorted = overlays.sortedWith(compareBy({ it.startMinuteFloat }, { it.endMinuteFloat }))
         val placed = mutableListOf<RectF>()
         val result = mutableListOf<Triple<WorkoutOverlay, Float, Float>>()
 
         for (overlay in sorted) {
-            val centerX = minuteToX(overlay.midpointMinute, chartLeft, chartWidth)
+            val centerX = minuteToX((overlay.startMinuteFloat + overlay.endMinuteFloat) / 2f, chartLeft, chartWidth)
             var chosen: Pair<Float, RectF>? = null
             for (lane in 0 until maxLane) {
                 val top = baseIconTop - lane * (iconSize + verticalGap)
@@ -419,6 +371,24 @@ class DayTimelineChartView @JvmOverloads constructor(
         }
     }
 
+    private fun drawYAxisLabels(
+        canvas: Canvas,
+        chartLeft: Float,
+        chartTop: Float,
+        chartBottom: Float
+    ) {
+        val h = chartBottom - chartTop
+        if (h <= 0f || yAxisScale.axisMax <= 0f) return
+        val labelX = chartLeft - (4f * density)
+        for (v in ChartAxisLabels.tickValues(yAxisScale)) {
+            if (v > yAxisScale.axisMax + 0.01f) continue
+            val frac = (v / yAxisScale.axisMax).coerceIn(0f, 1f)
+            val y = chartBottom - frac * h
+            canvas.drawLine(chartLeft - (4f * density), y, chartLeft, y, axisPaint)
+            canvas.drawText(ChartAxisLabels.formatTick(v), labelX, y + (3f * density), yAxisLabelPaint)
+        }
+    }
+
     private fun drawBar(
         canvas: Canvas,
         centerX: Float,
@@ -439,86 +409,149 @@ class DayTimelineChartView @JvmOverloads constructor(
         canvas.drawRoundRect(rect, 5f * density, 5f * density, paint)
     }
 
-    private fun formatValue(value: Float): String {
-        return if (value >= 1_000f) {
-            "${((value / 100f).toInt()) / 10f}k"
-        } else {
-            value.toInt().toString()
-        }
-    }
-
-    private fun drawWorkoutMarker(
-        canvas: Canvas,
-        centerX: Float,
-        chartTop: Float,
-        barWidth: Float
-    ) {
-        val rect = RectF(
-            centerX - (barWidth / 2f),
-            chartTop + (4f * density),
-            centerX + (barWidth / 2f),
-            chartTop + (14f * density)
-        )
-        canvas.drawRoundRect(rect, 5f * density, 5f * density, workoutPaint)
-    }
-
-    private fun buildBuckets(entries: List<TimelineBarEntry>): List<TimelineBucket> {
+    private fun buildBuckets(entries: List<TimelineBarEntry>, nowSplit: Float?): List<TimelineBucket> {
         if (entries.isEmpty()) return emptyList()
 
         val bucketMinutes = 1440 / bucketCount
         val buckets = MutableList(bucketCount) { TimelineBucket() }
 
         entries.forEach { entry ->
-            val start = entry.startMinute.coerceIn(0, 1439)
-            val endExclusive = entry.endMinute.coerceIn(start + 1, 1440)
-            var minute = start
-            while (minute < endExclusive) {
-                val bucketIndex = (minute / bucketMinutes).coerceIn(0, bucketCount - 1)
-                val bucketEnd = ((bucketIndex + 1) * bucketMinutes).coerceAtMost(endExclusive)
-                val overlapMinutes = (bucketEnd - minute).coerceAtLeast(1)
-                val portion = entry.value * (overlapMinutes / (endExclusive - start).toFloat())
-                val current = buckets[bucketIndex]
-                when (entry.series) {
-                    TimelineSeries.EXISTING -> current.existingValue += portion
-                    TimelineSeries.PROJECTED -> {
-                        current.projectedValue += portion
-                        current.projectedEmphasized = current.projectedEmphasized || entry.emphasized
+            val startMin: Float
+            val endMin: Float
+            if (entry.startSecondOfDay != null && entry.endSecondOfDay != null) {
+                startMin = (entry.startSecondOfDay.coerceIn(0, 86400)) / 60f
+                endMin = (entry.endSecondOfDay.coerceIn(0, 86400)) / 60f
+            } else {
+                val start = entry.startMinute.coerceIn(0, 1439)
+                val endExclusive = entry.endMinute.coerceIn(start + 1, 1440)
+                startMin = start.toFloat()
+                endMin = endExclusive.toFloat()
+            }
+            val totalSpan = (endMin - startMin).coerceAtLeast(1f / 60f)
+
+            when (entry.series) {
+                TimelineSeries.WORKOUT -> Unit
+                TimelineSeries.EXISTING, TimelineSeries.PROJECTED -> {
+                    val rangeLo: Float
+                    val rangeHi: Float
+                    if (nowSplit != null) {
+                        when (entry.series) {
+                            TimelineSeries.EXISTING -> {
+                                rangeLo = 0f
+                                rangeHi = nowSplit
+                            }
+                            TimelineSeries.PROJECTED -> {
+                                rangeLo = nowSplit
+                                rangeHi = 1440f
+                            }
+                            else -> return@forEach
+                        }
+                    } else {
+                        rangeLo = 0f
+                        rangeHi = 1440f
                     }
-                    TimelineSeries.WORKOUT -> {
-                        if (entry.workoutKind == null) {
-                            current.workoutMarker = true
+
+                    for (bucketIndex in 0 until bucketCount) {
+                        val bs = bucketIndex * bucketMinutes
+                        val be = (bucketIndex + 1) * bucketMinutes
+                        val overlap = segmentOverlap(
+                            startMin,
+                            endMin,
+                            max(rangeLo, bs.toFloat()),
+                            min(rangeHi, be.toFloat())
+                        )
+                        if (overlap <= 0f) continue
+                        val portion = entry.value * (overlap / totalSpan)
+                        val current = buckets[bucketIndex]
+                        when (entry.series) {
+                            TimelineSeries.EXISTING -> current.existingValue += portion
+                            TimelineSeries.PROJECTED -> {
+                                current.projectedValue += portion
+                                current.projectedEmphasized =
+                                    current.projectedEmphasized || entry.emphasized
+                            }
+                            else -> {}
                         }
                     }
                 }
-                minute = bucketEnd
             }
         }
 
         return buckets
     }
 
-    private fun extractWorkoutOverlays(entries: List<TimelineBarEntry>): List<WorkoutOverlay> {
+    private fun segmentOverlap(a0: Float, a1: Float, b0: Float, b1: Float): Float {
+        val lo = max(a0, b0)
+        val hi = min(a1, b1)
+        return (hi - lo).coerceAtLeast(0f)
+    }
+
+    private fun extractWorkoutOverlays(
+        entries: List<TimelineBarEntry>,
+        nowSplit: Float?
+    ): List<WorkoutOverlay> {
         return entries.mapNotNull { entry ->
             if (entry.series != TimelineSeries.WORKOUT) return@mapNotNull null
             val kind = entry.workoutKind ?: return@mapNotNull null
+
+            var startM = entry.startMinute.toFloat().coerceIn(0f, 1439f)
+            var endM = entry.endMinute.toFloat().coerceIn(startM + 1f, 1440f)
+
+            if (nowSplit != null) {
+                if (entry.workoutIsProjected) {
+                    startM = max(startM, nowSplit)
+                } else {
+                    endM = min(endM, nowSplit)
+                }
+            }
+
+            if (startM >= endM) return@mapNotNull null
+
+            val category = when (kind) {
+                TimelineWorkoutKind.MINDFULNESS ->
+                    if (entry.workoutIsProjected) WorkoutOverlayCategory.MINDFULNESS_PROJECTED
+                    else WorkoutOverlayCategory.MINDFULNESS_RECORDED
+                else ->
+                    if (entry.workoutIsProjected) WorkoutOverlayCategory.CARDIO_PROJECTED
+                    else WorkoutOverlayCategory.CARDIO_RECORDED
+            }
             WorkoutOverlay(
-                startMinute = entry.startMinute.coerceIn(0, 1439),
-                endMinute = entry.endMinute.coerceIn(entry.startMinute + 1, 1440),
-                midpointMinute = ((entry.startMinute + entry.endMinute) / 2).coerceIn(0, 1440),
+                startMinuteFloat = startM.coerceIn(0f, 1440f),
+                endMinuteFloat = endM.coerceIn(0f, 1440f),
                 kind = kind,
+                category = category,
                 title = entry.workoutTitle.orEmpty(),
                 detail = entry.workoutDetail.orEmpty(),
                 isProjected = entry.workoutIsProjected
             )
         }
     }
+
+    private fun underlayPaintFor(category: WorkoutOverlayCategory): Paint {
+        return when (category) {
+            WorkoutOverlayCategory.CARDIO_RECORDED -> workoutUnderlayRecordedPaint
+            WorkoutOverlayCategory.CARDIO_PROJECTED -> workoutUnderlayProjectedPaint
+            WorkoutOverlayCategory.MINDFULNESS_RECORDED -> workoutUnderlayMindfulnessRecordedPaint
+            WorkoutOverlayCategory.MINDFULNESS_PROJECTED -> workoutUnderlayMindfulnessProjectedPaint
+        }
+    }
+
+    private fun iconTintFor(category: WorkoutOverlayCategory): Int {
+        return when (category) {
+            WorkoutOverlayCategory.CARDIO_RECORDED -> workoutColorRecorded
+            WorkoutOverlayCategory.CARDIO_PROJECTED -> workoutColorProjected
+            WorkoutOverlayCategory.MINDFULNESS_RECORDED -> workoutColorMindfulnessRecorded
+            WorkoutOverlayCategory.MINDFULNESS_PROJECTED -> workoutColorMindfulnessProjected
+        }
+    }
 }
 
 private data class WorkoutOverlay(
-    val startMinute: Int,
-    val endMinute: Int,
-    val midpointMinute: Int,
+    /** Minutes since midnight (fractional) for drawing. */
+    val startMinuteFloat: Float,
+    val endMinuteFloat: Float,
     val kind: TimelineWorkoutKind,
+    val category: WorkoutOverlayCategory,
     val title: String,
     val detail: String,
     val isProjected: Boolean
@@ -527,6 +560,5 @@ private data class WorkoutOverlay(
 private data class TimelineBucket(
     var existingValue: Float = 0f,
     var projectedValue: Float = 0f,
-    var projectedEmphasized: Boolean = false,
-    var workoutMarker: Boolean = false
+    var projectedEmphasized: Boolean = false
 )

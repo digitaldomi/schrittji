@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji.chart
+package dev.sudominus.schrittji.chart
 
 import android.content.Context
 import android.graphics.Canvas
@@ -7,15 +7,17 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.View.MeasureSpec
-import dev.digitaldomi.schrittji.R
+import dev.sudominus.schrittji.R
 import kotlin.math.max
 
 data class DualSeriesBarPoint(
     val label: String,
     val existingValue: Float,
     val projectedValue: Float,
-    val hasRecordedWorkout: Boolean = false,
-    val hasProjectedWorkout: Boolean = false
+    val hasRecordedCardioWorkout: Boolean = false,
+    val hasRecordedMindfulnessWorkout: Boolean = false,
+    val hasProjectedCardioWorkout: Boolean = false,
+    val hasProjectedMindfulnessWorkout: Boolean = false
 )
 
 class DualSeriesBarChartView @JvmOverloads constructor(
@@ -27,7 +29,9 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     private val existingColor = context.getColor(R.color.chart_existing)
     private val projectedColor = context.getColor(R.color.chart_projected)
     private val workoutUnderlayRecorded = context.getColor(R.color.chart_workout_underlay)
-    private val workoutUnderlayProjected = context.getColor(R.color.chart_workout_underlay)
+    private val workoutUnderlayProjected = context.getColor(R.color.chart_workout_underlay_projected)
+    private val workoutUnderlayMindfulnessRecorded = context.getColor(R.color.chart_workout_underlay_mindfulness)
+    private val workoutUnderlayMindfulnessProjected = context.getColor(R.color.chart_workout_underlay_mindfulness_projected)
     private val axisColor = context.getColor(R.color.panel_stroke)
     private val textColor = context.getColor(R.color.brand_text)
 
@@ -49,6 +53,14 @@ class DualSeriesBarChartView @JvmOverloads constructor(
         textAlign = Paint.Align.CENTER
         textSize = 10f * scaledDensity
     }
+    private val yAxisLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textAlign = Paint.Align.RIGHT
+        textSize = 9f * scaledDensity
+        alpha = 200
+    }
+
+    private val yAxisGutterPx = resources.getDimensionPixelSize(R.dimen.chart_y_axis_gutter).toFloat()
     private val underlayRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = workoutUnderlayRecorded
@@ -56,6 +68,14 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     private val underlayProjectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = workoutUnderlayProjected
+    }
+    private val underlayMindfulnessRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutUnderlayMindfulnessRecorded
+    }
+    private val underlayMindfulnessProjectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = workoutUnderlayMindfulnessProjected
     }
 
     private var points: List<DualSeriesBarPoint> = emptyList()
@@ -87,38 +107,61 @@ class DualSeriesBarChartView @JvmOverloads constructor(
             return
         }
 
-        val chartLeft = paddingLeft + 12f * density
+        val chartLeft = paddingLeft + yAxisGutterPx
         val chartRight = width - paddingRight - 12f * density
         val chartTop = paddingTop + 12f * density
         val chartBottom = height - paddingBottom - 20f * density
         val chartWidth = chartRight - chartLeft
-        val maxValue = max(
+        val dataMax = max(
             1f,
             points.maxOf { max(it.existingValue, it.projectedValue) }
         )
+        val yAxisScale = ChartAxisLabels.computeScale(dataMax)
+        val axisMax = yAxisScale.axisMax
         val slotWidth = chartWidth / points.size.toFloat()
         val barWidth = (slotWidth * 0.28f).coerceAtLeast(4f * density)
 
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
+        canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint)
+        drawYAxisLabels(canvas, chartLeft, chartTop, chartBottom, yAxisScale)
 
         points.forEachIndexed { index, point ->
             val slotLeft = chartLeft + slotWidth * index
-            if (point.hasRecordedWorkout) {
+            val q = slotWidth / 4f
+            if (point.hasRecordedCardioWorkout) {
                 canvas.drawRect(
                     slotLeft + 1f * density,
                     chartTop,
-                    slotLeft + slotWidth / 2f,
+                    slotLeft + q,
                     chartBottom,
                     underlayRecordedPaint
                 )
             }
-            if (point.hasProjectedWorkout) {
+            if (point.hasRecordedMindfulnessWorkout) {
                 canvas.drawRect(
-                    slotLeft + slotWidth / 2f,
+                    slotLeft + q,
+                    chartTop,
+                    slotLeft + 2f * q,
+                    chartBottom,
+                    underlayMindfulnessRecordedPaint
+                )
+            }
+            if (point.hasProjectedCardioWorkout) {
+                canvas.drawRect(
+                    slotLeft + 2f * q,
+                    chartTop,
+                    slotLeft + 3f * q,
+                    chartBottom,
+                    underlayProjectedPaint
+                )
+            }
+            if (point.hasProjectedMindfulnessWorkout) {
+                canvas.drawRect(
+                    slotLeft + 3f * q,
                     chartTop,
                     slotLeft + slotWidth - 1f * density,
                     chartBottom,
-                    underlayProjectedPaint
+                    underlayMindfulnessProjectedPaint
                 )
             }
         }
@@ -130,7 +173,7 @@ class DualSeriesBarChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX - (barWidth * 0.65f),
                     value = point.existingValue,
-                    maxValue = maxValue,
+                    maxValue = axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = barWidth,
@@ -142,7 +185,7 @@ class DualSeriesBarChartView @JvmOverloads constructor(
                     canvas = canvas,
                     centerX = centerX + (barWidth * 0.65f),
                     value = point.projectedValue,
-                    maxValue = maxValue,
+                    maxValue = axisMax,
                     chartTop = chartTop,
                     chartBottom = chartBottom,
                     barWidth = barWidth,
@@ -150,6 +193,25 @@ class DualSeriesBarChartView @JvmOverloads constructor(
                 )
             }
             canvas.drawText(point.label, centerX, height - paddingBottom - (6f * density), labelPaint)
+        }
+    }
+
+    private fun drawYAxisLabels(
+        canvas: Canvas,
+        chartLeft: Float,
+        chartTop: Float,
+        chartBottom: Float,
+        scale: ChartAxisLabels.Scale
+    ) {
+        val h = chartBottom - chartTop
+        if (h <= 0f || scale.axisMax <= 0f) return
+        val labelX = chartLeft - (4f * density)
+        for (v in ChartAxisLabels.tickValues(scale)) {
+            if (v > scale.axisMax + 0.01f) continue
+            val frac = (v / scale.axisMax).coerceIn(0f, 1f)
+            val y = chartBottom - frac * h
+            canvas.drawLine(chartLeft - (4f * density), y, chartLeft, y, axisPaint)
+            canvas.drawText(ChartAxisLabels.formatTick(v), labelX, y + (3f * density), yAxisLabelPaint)
         }
     }
 

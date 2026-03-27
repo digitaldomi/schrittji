@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji
+package dev.sudominus.schrittji
 
 import android.content.Context
 import android.content.Intent
@@ -8,21 +8,23 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
-import dev.digitaldomi.schrittji.chart.TimelineSeries
-import dev.digitaldomi.schrittji.chart.TimelineBarEntry
-import dev.digitaldomi.schrittji.chart.TimelineWorkoutKind
-import dev.digitaldomi.schrittji.databinding.ActivityDayDetailBinding
-import dev.digitaldomi.schrittji.health.HealthConnectExerciseSession
-import dev.digitaldomi.schrittji.health.HealthConnectGateway
-import dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry
-import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
-import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
-import dev.digitaldomi.schrittji.simulation.WorkoutPlan
-import dev.digitaldomi.schrittji.simulation.WorkoutType
+import dev.sudominus.schrittji.chart.ProjectionTimeline
+import dev.sudominus.schrittji.chart.TimelineSeries
+import dev.sudominus.schrittji.chart.TimelineBarEntry
+import dev.sudominus.schrittji.chart.TimelineWorkoutKind
+import dev.sudominus.schrittji.databinding.ActivityDayDetailBinding
+import dev.sudominus.schrittji.health.HealthConnectExerciseSession
+import dev.sudominus.schrittji.health.HealthConnectGateway
+import dev.sudominus.schrittji.health.WorkoutMerge
+import dev.sudominus.schrittji.health.HealthConnectStepRecordEntry
+import dev.sudominus.schrittji.simulation.SimulationConfigStore
+import dev.sudominus.schrittji.simulation.SimulationCoordinator
+import dev.sudominus.schrittji.simulation.WorkoutPlan
+import dev.sudominus.schrittji.simulation.WorkoutType
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -67,19 +69,6 @@ class DayDetailActivity : AppCompatActivity() {
         binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
         binding.toolbar.setNavigationOnClickListener { finish() }
 
-        binding.chartDayTimeline.setOnWorkoutTapListener { info ->
-            val title = when {
-                info.title.isNotBlank() -> info.title
-                info.kind == TimelineWorkoutKind.RUNNING -> getString(R.string.workout_title_running)
-                else -> getString(R.string.workout_title_cycling)
-            }
-            MaterialAlertDialogBuilder(this)
-                .setTitle(title)
-                .setMessage(info.detail)
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
-        }
-
         binding.buttonPreviousDay.setOnClickListener {
             selectedDate = selectedDate.minusDays(1)
             loadDay()
@@ -99,24 +88,18 @@ class DayDetailActivity : AppCompatActivity() {
                 when (source) {
                     DayDetailSource.HEALTH_CONNECT -> {
                         val entries = healthConnectGateway.readStepEntriesForDate(selectedDate)
-                        val exercises = if (healthConnectGateway.hasExerciseReadPermission()) {
-                            try {
-                                healthConnectGateway.readExerciseSessionsForDate(selectedDate)
-                            } catch (_: Exception) {
-                                emptyList()
-                            }
-                        } else {
-                            emptyList()
-                        }
-                        renderHealthConnectDay(entries, exercises)
+                        val exResult = healthConnectGateway.readExerciseSessionsForDateResult(selectedDate)
+                        renderHealthConnectDay(entries, exResult.sessions, exResult.queryError)
                     }
 
-                    DayDetailSource.PROJECTION -> renderProjectionDay(
-                        simulationCoordinator.projectDayDetail(
+                    DayDetailSource.PROJECTION -> {
+                        val detail = simulationCoordinator.projectDayDetail(
                             simulationCoordinator.loadConfig(),
                             selectedDate
                         )
-                    )
+                        val exResult = healthConnectGateway.readExerciseSessionsForDateResult(selectedDate)
+                        renderProjectionDay(detail, exResult.sessions, exResult.queryError)
+                    }
                 }
             } catch (exception: Exception) {
                 Snackbar.make(
@@ -130,14 +113,24 @@ class DayDetailActivity : AppCompatActivity() {
 
     private fun renderHealthConnectDay(
         entries: List<HealthConnectStepRecordEntry>,
-        exercises: List<HealthConnectExerciseSession>
+        exercises: List<HealthConnectExerciseSession>,
+        exerciseReadError: String?
     ) {
         val totalSteps = entries.sumOf { it.count }
         binding.textSummary.text = buildString {
             appendLine("Source: Health Connect")
             appendLine("Visible records: ${entries.size}")
-            appendLine("Exercise sessions (run/bike): ${exercises.size}")
+            appendLine("Exercise sessions: ${exercises.size}")
+            exerciseReadError?.let {
+                appendLine(getString(R.string.hc_day_exercise_read_error, it))
+                appendLine(getString(R.string.summary_exercise_read_failed_hint))
+            }
             append("Total steps: ${totalSteps.formatThousands()}")
+            if (exercises.isEmpty() && exerciseReadError == null) {
+                appendLine()
+                appendLine()
+                append(getString(R.string.hc_day_exercise_zero_hint))
+            }
         }
         binding.textEntries.text = if (entries.isEmpty()) {
             getString(R.string.day_detail_empty)
@@ -172,31 +165,100 @@ class DayDetailActivity : AppCompatActivity() {
         )
     }
 
-    private fun renderProjectionDay(detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail) {
+    private fun renderProjectionDay(
+        detail: dev.sudominus.schrittji.simulation.ProjectedStepDayDetail,
+        hcSessions: List<HealthConnectExerciseSession>,
+        exerciseReadError: String?
+    ) {
+        val today = LocalDate.now(zoneId)
+        val showFutureProjection = selectedDate.isAfter(today)
+        val isToday = selectedDate == today
+        val nowZdt = ZonedDateTime.now(zoneId)
+        val nowSecOfDay = nowZdt.toLocalTime().toSecondOfDay().coerceIn(0, 86400)
+        val nowMinuteOfDay = nowZdt.hour * 60 + nowZdt.minute + nowZdt.second / 60f
+
         val slices = detail.slices
-        val totalSteps = slices.sumOf { it.count }
-        binding.textSummary.text = buildString {
-            appendLine("Source: Schrittji projection")
-            appendLine("Generated minute records: ${slices.size}")
-            append("Projected total steps: ${totalSteps.formatThousands()}")
+        val projectedOnly = when {
+            showFutureProjection -> detail.workouts.filter { plan ->
+                hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) }
+            }
+            isToday -> detail.workouts.filter { plan ->
+                hcSessions.none { WorkoutMerge.hcMatchesProjectedPlan(it, plan) } &&
+                    plan.start.isAfter(nowZdt)
+            }
+            else -> emptyList()
         }
-        binding.textEntries.text = if (slices.isEmpty()) {
-            getString(R.string.day_detail_empty)
+
+        val todayProjectedEntries = if (isToday) {
+            ProjectionTimeline.splitSlicesAtNow(detail.slices, selectedDate, zoneId, nowSecOfDay)
         } else {
-            slices.joinToString(separator = "\n") { slice ->
-                "${slice.start.withZoneSameInstant(zoneId).format(timeFormatter)}-${slice.end.withZoneSameInstant(zoneId).format(timeFormatter)}  ${slice.count.formatThousands()} steps"
+            emptyList()
+        }
+
+        val projectedStepsForSummary = when {
+            showFutureProjection -> slices.sumOf { it.count }
+            isToday -> todayProjectedEntries.sumOf { it.value.toLong() }
+            else -> 0L
+        }
+        val projectedMinuteCount = when {
+            showFutureProjection -> slices.size
+            isToday -> todayProjectedEntries.size
+            else -> 0
+        }
+
+        binding.chartDayTimeline.setNowMarkerMinuteOfDay(if (isToday) nowMinuteOfDay else null)
+        binding.textSummary.text = buildString {
+            appendLine("Source: Preview projection")
+            when {
+                showFutureProjection -> {
+                    appendLine("Generated minute records: ${slices.size}")
+                    appendLine("Projected total steps: ${slices.sumOf { it.count }.formatThousands()}")
+                }
+                isToday -> {
+                    appendLine("Projected (rest of day): ${projectedStepsForSummary.formatThousands()} steps")
+                    appendLine("Projection minute records: $projectedMinuteCount")
+                }
+                else -> appendLine(getString(R.string.summary_projection_future_only))
+            }
+            appendLine(getString(R.string.day_detail_hc_exercise_count, hcSessions.size))
+            exerciseReadError?.let {
+                appendLine(getString(R.string.hc_day_exercise_read_error, it))
+                appendLine(getString(R.string.summary_exercise_read_failed_hint))
             }
         }
+        binding.textEntries.text = when {
+            showFutureProjection && slices.isNotEmpty() ->
+                slices.joinToString(separator = "\n") { slice ->
+                    "${slice.start.withZoneSameInstant(zoneId).format(timeFormatter)}-${slice.end.withZoneSameInstant(zoneId).format(timeFormatter)}  ${slice.count.formatThousands()} steps"
+                }
+            isToday && todayProjectedEntries.isNotEmpty() ->
+                todayProjectedEntries.joinToString(separator = "\n") { e ->
+                    val zs = selectedDate.atStartOfDay(zoneId).plusSeconds((e.startSecondOfDay ?: 0).toLong())
+                    val ze = selectedDate.atStartOfDay(zoneId).plusSeconds((e.endSecondOfDay ?: 0).toLong())
+                    "${zs.format(timeFormatter)}-${ze.format(timeFormatter)}  ${e.value.toLong().formatThousands()} steps"
+                }
+            else -> getString(R.string.day_detail_empty)
+        }
         binding.chartDayTimeline.submitEntries(
-            slices.map { slice ->
+            when {
+                showFutureProjection -> detail.slices.map {
+                    ProjectionTimeline.sliceToProjectedEntry(it, selectedDate, zoneId)
+                }
+                isToday -> todayProjectedEntries
+                else -> emptyList()
+            } + hcSessions.map { session ->
                 TimelineBarEntry(
-                    startMinute = slice.start.hour * 60 + slice.start.minute,
-                    endMinute = slice.end.hour * 60 + slice.end.minute,
-                    value = slice.count.toFloat(),
-                    series = TimelineSeries.PROJECTED,
-                    emphasized = false
+                    startMinute = session.start.hour * 60 + session.start.minute,
+                    endMinute = session.end.hour * 60 + session.end.minute,
+                    value = 1f,
+                    series = TimelineSeries.WORKOUT,
+                    workoutKind = session.type.toTimelineWorkoutKind(),
+                    workoutTitle = session.title?.takeIf { it.isNotBlank() }
+                        ?: defaultWorkoutTitle(session.type),
+                    workoutDetail = healthConnectGateway.formatExerciseSessionDetail(session),
+                    workoutIsProjected = false
                 )
-            } + detail.workouts.map { workout ->
+            } + projectedOnly.map { workout ->
                 TimelineBarEntry(
                     startMinute = workout.start.hour * 60 + workout.start.minute,
                     endMinute = workout.end.hour * 60 + workout.end.minute,
@@ -215,6 +277,7 @@ class DayDetailActivity : AppCompatActivity() {
         return when (type) {
             WorkoutType.RUNNING -> getString(R.string.workout_title_running)
             WorkoutType.CYCLING -> getString(R.string.workout_title_cycling)
+            WorkoutType.MINDFULNESS -> getString(R.string.workout_title_mindfulness)
         }
     }
 
@@ -226,10 +289,10 @@ class DayDetailActivity : AppCompatActivity() {
                     workout.end.withZoneSameInstant(zoneId).format(timeFormatter)
             )
             appendLine("Duration: $duration min")
-            appendLine(String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0))
-            if (workout.notes.isNotBlank()) {
-                appendLine(workout.notes)
+            if (workout.type != WorkoutType.MINDFULNESS) {
+                appendLine(String.format(Locale.getDefault(), "%.1f km", workout.distanceMeters / 1000.0))
             }
+            workout.notes?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
             append(getString(R.string.workout_info_source_projected))
         }
     }
@@ -263,5 +326,6 @@ private fun WorkoutType.toTimelineWorkoutKind(): TimelineWorkoutKind {
     return when (this) {
         WorkoutType.RUNNING -> TimelineWorkoutKind.RUNNING
         WorkoutType.CYCLING -> TimelineWorkoutKind.CYCLING
+        WorkoutType.MINDFULNESS -> TimelineWorkoutKind.MINDFULNESS
     }
 }

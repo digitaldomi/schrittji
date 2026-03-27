@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji.simulation
+package dev.sudominus.schrittji.simulation
 
 import android.content.Context
 import java.security.SecureRandom
@@ -20,6 +20,11 @@ data class SimulationConfig(
     val cyclingMaxSessionsPerWeek: Int = 1,
     val cyclingMinDurationMinutes: Int = 40,
     val cyclingMaxDurationMinutes: Int = 95,
+    val mindfulnessEnabled: Boolean = true,
+    val mindfulnessMinSessionsPerWeek: Int = 0,
+    val mindfulnessMaxSessionsPerWeek: Int = 2,
+    val mindfulnessMinDurationMinutes: Int = 10,
+    val mindfulnessMaxDurationMinutes: Int = 35,
     val randomSeed: Long = 0L,
     val lastPublishedEpochMilli: Long? = null,
     val lastSummary: String = "No Health Connect data has been written yet.",
@@ -48,6 +53,11 @@ class SimulationConfigStore(context: Context) {
             cyclingMaxSessionsPerWeek = preferences.getInt(KEY_CYCLING_MAX_SESSIONS, 1),
             cyclingMinDurationMinutes = preferences.getInt(KEY_CYCLING_MIN_DURATION, 40),
             cyclingMaxDurationMinutes = preferences.getInt(KEY_CYCLING_MAX_DURATION, 95),
+            mindfulnessEnabled = preferences.getBoolean(KEY_MINDFULNESS_ENABLED, true),
+            mindfulnessMinSessionsPerWeek = preferences.getInt(KEY_MINDFULNESS_MIN_SESSIONS, 0),
+            mindfulnessMaxSessionsPerWeek = preferences.getInt(KEY_MINDFULNESS_MAX_SESSIONS, 2),
+            mindfulnessMinDurationMinutes = preferences.getInt(KEY_MINDFULNESS_MIN_DURATION, 10),
+            mindfulnessMaxDurationMinutes = preferences.getInt(KEY_MINDFULNESS_MAX_DURATION, 35),
             randomSeed = preferences.getLong(KEY_RANDOM_SEED, 0L),
             lastPublishedEpochMilli = rawLastPublished.takeUnless { it == Long.MIN_VALUE },
             lastSummary = preferences.getString(
@@ -79,6 +89,11 @@ class SimulationConfigStore(context: Context) {
             .putInt(KEY_CYCLING_MAX_SESSIONS, config.cyclingMaxSessionsPerWeek)
             .putInt(KEY_CYCLING_MIN_DURATION, config.cyclingMinDurationMinutes)
             .putInt(KEY_CYCLING_MAX_DURATION, config.cyclingMaxDurationMinutes)
+            .putBoolean(KEY_MINDFULNESS_ENABLED, config.mindfulnessEnabled)
+            .putInt(KEY_MINDFULNESS_MIN_SESSIONS, config.mindfulnessMinSessionsPerWeek)
+            .putInt(KEY_MINDFULNESS_MAX_SESSIONS, config.mindfulnessMaxSessionsPerWeek)
+            .putInt(KEY_MINDFULNESS_MIN_DURATION, config.mindfulnessMinDurationMinutes)
+            .putInt(KEY_MINDFULNESS_MAX_DURATION, config.mindfulnessMaxDurationMinutes)
             .putLong(KEY_RANDOM_SEED, stableSeed)
             .putString(KEY_LAST_SUMMARY, config.lastSummary)
             .putString(KEY_LAST_GENERATED_DETAILS, config.lastGeneratedDetails)
@@ -134,6 +149,11 @@ class SimulationConfigStore(context: Context) {
         private const val KEY_CYCLING_MAX_SESSIONS = "cycling_max_sessions"
         private const val KEY_CYCLING_MIN_DURATION = "cycling_min_duration"
         private const val KEY_CYCLING_MAX_DURATION = "cycling_max_duration"
+        private const val KEY_MINDFULNESS_ENABLED = "mindfulness_enabled"
+        private const val KEY_MINDFULNESS_MIN_SESSIONS = "mindfulness_min_sessions"
+        private const val KEY_MINDFULNESS_MAX_SESSIONS = "mindfulness_max_sessions"
+        private const val KEY_MINDFULNESS_MIN_DURATION = "mindfulness_min_duration"
+        private const val KEY_MINDFULNESS_MAX_DURATION = "mindfulness_max_duration"
         private const val KEY_RANDOM_SEED = "random_seed"
         private const val KEY_LAST_PUBLISHED = "last_published"
         private const val KEY_LAST_SUMMARY = "last_summary"

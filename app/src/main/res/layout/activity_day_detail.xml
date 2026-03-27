@@ -73,7 +73,7 @@
                 android:padding="16dp"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
-            <dev.digitaldomi.schrittji.chart.DayTimelineChartView
+            <dev.sudominus.schrittji.chart.DayTimelineChartView
                 android:id="@+id/chartDayTimeline"
                 android:layout_width="match_parent"
                 android:layout_height="260dp"

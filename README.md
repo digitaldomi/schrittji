@@ -1,63 +1,48 @@
 # Schrittji
 
-Schrittji is a small Android app for generating realistic-looking step activity and publishing it to Health Connect so you can test how another Android app reacts to walking history and ongoing updates.
+Android app that **generates realistic step patterns** and **writes them to [Health Connect](https://developer.android.com/health-and-fitness/guides/health-connect)**. Use it to seed history, keep data topped up, and preview how charts look with **recorded vs projected** activity.
 
-## What it does
+**Application ID:** `dev.sudominus.schrittji` (installs as a separate app from older `dev.digitaldomi.schrittji` builds).
 
-- creates daily step plans with a mix of structure and randomness
-- varies behavior by profile, weekday/weekend, and rolling multi-day patterns
-- writes minute-level `StepsRecord` data to Health Connect
-- can backfill recent history and keep topping up data in the background with WorkManager
-- always uses the same generation logic in normal app code instead of switching behavior behind a debug-only flag
+## Features
 
-## Project layout
+- **Day & week charts** — Minute-level steps (Health Connect + simulated projection). **Today** splits at a **now** line: past = recorded, future = projection only.
+- **Workouts** — Running, cycling, and mindfulness blocks on the timeline; optional **write** to Health Connect **after each session ends** (not mid-workout).
+- **Settings** — Daily step range, backfill window, optional background sync (~15 min), toggles for steps and each workout type (including mindfulness session count/duration).
+- **Permissions** — Steps and **exercise** read/write (exercise read is required for loading sessions on charts). Written records use generic titles and normal device-style metadata.
 
-- `app/` - Android application
-- `.github/workflows/build-release-apk.yml` - CI job that builds and uploads a release APK on every push / PR
-- `.github/workflows/create-tag-release.yml` - CI job that creates a GitHub Release for `vX.X.X` tags and attaches the APK
-- `signing/schrittji-release.jks` - portable test keystore used to make the release APK directly installable
+## Quick start
 
-## Using the app
+1. Install the APK and open Schrittji.
+2. Grant Health Connect permissions when prompted (steps + exercise as needed).
+3. Set your step range and backfill options, then **Save**.
+4. Run **Backfill** to seed past days; enable **background service** if you want ongoing updates.
 
-1. Install the APK on your Android device.
-2. Open Schrittji.
-3. Open Health Connect and grant Schrittji step read/write permission.
-4. Set Schrittji-only daily min/max steps and a backfill window.
-5. Use **Backfill selected history window** to seed prior days.
-6. Turn on continuous publishing and save settings if you want ongoing updates every ~15 minutes.
-
-## Downloading a release APK from GitHub Actions
-
-Every push triggers the `Build release APK` workflow.
-
-1. Open the workflow run in GitHub.
-2. Download the uploaded artifact named `schrittji-release-<commit-sha>`.
-3. Extract the artifact archive.
-4. Install the contained release APK on your device.
-
-## Creating a GitHub release from a tag
-
-Pushing a semantic version tag in the form `vX.X.X` triggers the `Create tagged release` workflow.
-
-Example:
-
-```bash
-git tag v1.2.3
-git push origin v1.2.3
-```
-
-That workflow will:
-
-1. build the release APK
-2. create a GitHub Release for the tag
-3. attach the APK as a release asset
-
-This works for any commit you tag, as long as the tag name matches `vX.X.X`.
-
-## Local build
+## Build
 
 ```bash
 ./gradlew assembleRelease
 ```
 
-The repository includes a dedicated test signing key so the generated release APK is installable without extra secrets. Do not reuse that key for production distribution.
+A test signing key is included so release APKs install locally. Replace with your own key for real distribution.
+
+## CI & releases
+
+- **Every push** — Workflow builds a release APK (see Actions artifacts).
+- **Tags `vX.X.X`** — Workflow creates a GitHub Release and attaches the APK.
+
+## Project layout
+
+| Path | Purpose |
+|------|---------|
+| `app/` | Application code |
+| `.github/workflows/` | Build and release automation |
+| `signing/schrittji-release.jks` | Local test keystore |
+
+## Credits
+
+The in-app **running** workout icon uses Google’s **Material Symbols** glyph *directions_run* (Apache 2.0), scaled to the app’s 24dp grid.
+
+## License / disclaimer
+
+This tool is for **development and testing** of Health Connect consumers. Respect platform policies and user consent when handling health data.

@@ -1,12 +1,12 @@
-package dev.digitaldomi.schrittji
+package dev.sudominus.schrittji
 
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
-import dev.digitaldomi.schrittji.databinding.ItemStepRecordBinding
-import dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry
+import dev.sudominus.schrittji.databinding.ItemStepRecordBinding
+import dev.sudominus.schrittji.health.HealthConnectStepRecordEntry
 import java.time.format.DateTimeFormatter
 
 class StepRecordAdapter(context: Context) : BaseAdapter() {
@@ -38,9 +38,10 @@ class StepRecordAdapter(context: Context) : BaseAdapter() {
             "${item.count.formatThousands()} steps  |  ${item.start.format(timeFormatter)} - ${item.end.format(timeFormatter)}"
         binding.textSecondary.text = buildString {
             append("Source: ")
-            append(if (item.sourcePackage.isBlank()) "Unknown app" else item.sourcePackage)
-            if (item.isFromSchrittji) {
-                append("  |  Written by Schrittji")
+            when {
+                item.isFromSchrittji -> append("This app")
+                item.sourcePackage.isBlank() -> append("Unknown")
+                else -> append(item.sourcePackage)
             }
         }
         return binding.root

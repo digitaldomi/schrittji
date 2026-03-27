@@ -327,6 +327,102 @@
                     android:textColor="@color/brand_text"
                     android:textColorHint="@color/brand_text" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/mindfulness_workouts"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textColor="@color/brand_text" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchMindfulnessEnabled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/enable_mindfulness_workouts"
+                android:textColor="@color/brand_text" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputMindfulnessMinSessions"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/min_sessions_per_week"
+                app:boxBackgroundColor="@android:color/white"
+                app:boxStrokeColor="@color/brand_primary_dark"
+                app:hintTextColor="@color/brand_text">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editMindfulnessMinSessions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:textColor="@color/brand_text"
+                    android:textColorHint="@color/brand_text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputMindfulnessMaxSessions"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/max_sessions_per_week"
+                app:boxBackgroundColor="@android:color/white"
+                app:boxStrokeColor="@color/brand_primary_dark"
+                app:hintTextColor="@color/brand_text">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editMindfulnessMaxSessions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:textColor="@color/brand_text"
+                    android:textColorHint="@color/brand_text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputMindfulnessMinDuration"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/min_duration_minutes"
+                app:boxBackgroundColor="@android:color/white"
+                app:boxStrokeColor="@color/brand_primary_dark"
+                app:hintTextColor="@color/brand_text">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editMindfulnessMinDuration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:textColor="@color/brand_text"
+                    android:textColorHint="@color/brand_text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputMindfulnessMaxDuration"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/max_duration_minutes"
+                app:boxBackgroundColor="@android:color/white"
+                app:boxStrokeColor="@color/brand_primary_dark"
+                app:hintTextColor="@color/brand_text">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editMindfulnessMaxDuration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:textColor="@color/brand_text"
+                    android:textColorHint="@color/brand_text" />
+            </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
     </ScrollView>
 

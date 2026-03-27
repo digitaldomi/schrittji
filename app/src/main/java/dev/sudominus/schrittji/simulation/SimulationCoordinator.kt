@@ -1,7 +1,8 @@
-package dev.digitaldomi.schrittji.simulation
+package dev.sudominus.schrittji.simulation
 
-import dev.digitaldomi.schrittji.health.HealthConnectGateway
+import dev.sudominus.schrittji.health.HealthConnectGateway
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -126,12 +127,16 @@ class SimulationCoordinator(
 
         val generatedWindow = stepSimulationEngine.generateWindowData(safeStart, safeEnd, config)
         val slices = generatedWindow.stepSlices
-        val workouts = generatedWindow.workouts
+        val allWorkouts = generatedWindow.workouts
+        val nowInstant = Instant.now()
+        val workoutsToInsert = allWorkouts.filter { workout ->
+            !workout.end.toInstant().isAfter(nowInstant)
+        }
         val insertedStepRecords = healthConnectGateway.insertSlices(slices)
-        val insertedWorkouts = healthConnectGateway.insertWorkouts(workouts)
+        val insertedWorkouts = healthConnectGateway.insertWorkouts(workoutsToInsert)
         val stepCount = slices.sumOf { it.count }
-        val generatedDetails = buildGeneratedDetails(label, safeStart, safeEnd, slices, workouts)
-        val summary = if (slices.isEmpty() && workouts.isEmpty()) {
+        val generatedDetails = buildGeneratedDetails(label, safeStart, safeEnd, slices, workoutsToInsert)
+        val summary = if (slices.isEmpty() && allWorkouts.isEmpty()) {
             "$label produced no slices for ${safeStart.format(formatter)} to ${safeEnd.format(formatter)}."
         } else {
             "$label created and added ${stepCount.formatThousands()} steps to Health Connect " +
