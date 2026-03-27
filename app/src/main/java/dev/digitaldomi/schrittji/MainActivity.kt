@@ -13,6 +13,7 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABL
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
 import androidx.core.content.ContextCompat
+import androidx.concurrent.futures.await
 import androidx.lifecycle.lifecycleScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -186,11 +187,11 @@ class MainActivity : AppCompatActivity() {
         val workerActive = withContext(Dispatchers.IO) {
             val immediate = workManager
                 .getWorkInfosForUniqueWork(StepPublishingScheduler.IMMEDIATE_WORK_NAME)
-                .get()
+                .await()
             val periodic = workManager
                 .getWorkInfosForUniqueWork(StepPublishingScheduler.PERIODIC_WORK_NAME)
-                .get()
-            (immediate + periodic).any { it.state == WorkInfo.State.RUNNING }
+                .await()
+            (immediate + periodic).any { info -> info.state == WorkInfo.State.RUNNING }
         }
         val updatesOk = dataFresh || (config.automationEnabled && workerActive)
         val updatesOkText = when {
