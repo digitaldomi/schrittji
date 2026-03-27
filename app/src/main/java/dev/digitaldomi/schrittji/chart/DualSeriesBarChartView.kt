@@ -47,7 +47,7 @@ class DualSeriesBarChartView @JvmOverloads constructor(
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
-        textSize = 10f * scaledDensity
+        textSize = 12f * scaledDensity
     }
     private val underlayRecordedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -87,10 +87,10 @@ class DualSeriesBarChartView @JvmOverloads constructor(
             return
         }
 
-        val chartLeft = paddingLeft + 12f * density
-        val chartRight = width - paddingRight - 12f * density
-        val chartTop = paddingTop + 12f * density
-        val chartBottom = height - paddingBottom - 20f * density
+        val chartLeft = paddingLeft + 6f * density
+        val chartRight = width - paddingRight - 6f * density
+        val chartTop = paddingTop + 10f * density
+        val chartBottom = height - paddingBottom - 24f * density
         val chartWidth = chartRight - chartLeft
         val maxValue = max(
             1f,
@@ -149,7 +149,10 @@ class DualSeriesBarChartView @JvmOverloads constructor(
                     paint = projectedPaint
                 )
             }
-            canvas.drawText(point.label, centerX, height - paddingBottom - (6f * density), labelPaint)
+            val labelBaseline = height - paddingBottom - (8f * density)
+            val halfW = labelPaint.measureText(point.label) / 2f
+            val drawX = centerX.coerceIn(chartLeft + halfW, chartRight - halfW)
+            canvas.drawText(point.label, drawX, labelBaseline, labelPaint)
         }
     }
 

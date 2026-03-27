@@ -107,13 +107,13 @@ class DayTimelineChartView @JvmOverloads constructor(
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
-        textSize = 10f * scaledDensity
+        textSize = 12f * scaledDensity
     }
     private val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.LEFT
-        textSize = 10f * scaledDensity
-        alpha = 170
+        textSize = 12f * scaledDensity
+        alpha = 200
     }
 
     private var buckets: List<TimelineBucket> = emptyList()
@@ -185,15 +185,18 @@ class DayTimelineChartView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val chartLeft = paddingLeft + 12f * density
-        val chartRight = width - paddingRight - 12f * density
-        val chartTop = paddingTop + 10f * density
-        val chartBottom = height - paddingBottom - 18f * density
+        val maxLabel = "max ${formatValue(maxValue)}"
+        val yLabelWidth = valuePaint.measureText(maxLabel)
+        val axisGap = 5f * density
+        val chartLeft = paddingLeft + yLabelWidth + axisGap
+        val chartRight = width - paddingRight - 8f * density
+        val chartTop = paddingTop + 12f * density
+        val chartBottom = height - paddingBottom - 22f * density
         val chartWidth = chartRight - chartLeft
 
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint)
         canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint)
-        canvas.drawText("max ${formatValue(maxValue)}", chartLeft, chartTop - (6f * density), valuePaint)
+        canvas.drawText(maxLabel, paddingLeft.toFloat(), chartTop - (4f * density), valuePaint)
 
         val newHits = mutableListOf<Pair<RectF, WorkoutTapInfo>>()
 
@@ -411,11 +414,15 @@ class DayTimelineChartView @JvmOverloads constructor(
 
     private fun drawHourLabels(canvas: Canvas, chartLeft: Float, chartRight: Float, chartBottom: Float) {
         val labels = listOf("00", "04", "08", "12", "16", "20", "24")
+        val tickH = 6f * density
+        val labelY = chartBottom + (20f * density)
         labels.forEachIndexed { index, label ->
             val fraction = index / (labels.size - 1).toFloat()
             val x = chartLeft + ((chartRight - chartLeft) * fraction)
-            canvas.drawLine(x, chartBottom, x, chartBottom + (5f * density), axisPaint)
-            canvas.drawText(label, x, chartBottom + (18f * density), labelPaint)
+            canvas.drawLine(x, chartBottom, x, chartBottom + tickH, axisPaint)
+            val halfW = labelPaint.measureText(label) / 2f
+            val drawX = x.coerceIn(chartLeft + halfW, chartRight - halfW)
+            canvas.drawText(label, drawX, labelY, labelPaint)
         }
     }
 

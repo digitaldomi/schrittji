@@ -43,13 +43,13 @@ class SimpleBarChartView @JvmOverloads constructor(
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
-        textSize = 11f * scaledDensity
+        textSize = 12f * scaledDensity
     }
     private val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
-        textSize = 10f * scaledDensity
-        alpha = 180
+        textSize = 12f * scaledDensity
+        alpha = 200
     }
 
     private var points: List<BarChartPoint> = emptyList()
@@ -78,10 +78,10 @@ class SimpleBarChartView @JvmOverloads constructor(
             return
         }
 
-        val chartLeft = paddingLeft + 8f * density
-        val chartRight = width - paddingRight - 8f * density
-        val chartTop = paddingTop + 24f * density
-        val chartBottom = height - paddingBottom - 28f * density
+        val chartLeft = paddingLeft + 4f * density
+        val chartRight = width - paddingRight - 4f * density
+        val chartTop = paddingTop + 22f * density
+        val chartBottom = height - paddingBottom - 30f * density
         val chartWidth = chartRight - chartLeft
         val chartHeight = chartBottom - chartTop
         val maxValue = max(1f, points.maxOf { it.value })
