@@ -13,7 +13,7 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABL
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
 import androidx.core.content.ContextCompat
-import androidx.concurrent.futures.await
+import androidx.lifecycle.asFlow
 import androidx.lifecycle.lifecycleScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -43,6 +43,7 @@ import java.util.Locale
 import kotlin.math.max
 import kotlin.math.round
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -184,13 +185,17 @@ class MainActivity : AppCompatActivity() {
             Instant.ofEpochMilli(it).isAfter(Instant.now().minusSeconds(45 * 60))
         } == true
         val workManager = WorkManager.getInstance(applicationContext)
-        val workerActive = withContext(Dispatchers.IO) {
+        // LiveData + Flow avoids ListenableFuture: core resolves listenablefuture to an empty
+        // stub (9999.0-empty), so Guava's ListenableFuture is not on the compile classpath.
+        val workerActive = withContext(Dispatchers.Main.immediate) {
             val immediate = workManager
-                .getWorkInfosForUniqueWork(StepPublishingScheduler.IMMEDIATE_WORK_NAME)
-                .await()
+                .getWorkInfosForUniqueWorkLiveData(StepPublishingScheduler.IMMEDIATE_WORK_NAME)
+                .asFlow()
+                .first()
             val periodic = workManager
-                .getWorkInfosForUniqueWork(StepPublishingScheduler.PERIODIC_WORK_NAME)
-                .await()
+                .getWorkInfosForUniqueWorkLiveData(StepPublishingScheduler.PERIODIC_WORK_NAME)
+                .asFlow()
+                .first()
             (immediate + periodic).any { info -> info.state == WorkInfo.State.RUNNING }
         }
         val updatesOk = dataFresh || (config.automationEnabled && workerActive)
