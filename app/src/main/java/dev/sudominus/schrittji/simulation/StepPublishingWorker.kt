@@ -88,10 +88,10 @@ object StepPublishingScheduler {
     /** True when the periodic WorkManager job is enqueued or running (may still be delayed by Doze). */
     suspend fun isPeriodicScheduled(context: Context): Boolean {
         return try {
-            val infos = WorkManager.getInstance(context)
+            val infos: List<WorkInfo> = WorkManager.getInstance(context)
                 .getWorkInfosForUniqueWork(PERIODIC_WORK_NAME)
                 .await()
-            infos.any { info ->
+            infos.any { info: WorkInfo ->
                 info.state == WorkInfo.State.ENQUEUED || info.state == WorkInfo.State.RUNNING
             }
         } catch (_: Exception) {
