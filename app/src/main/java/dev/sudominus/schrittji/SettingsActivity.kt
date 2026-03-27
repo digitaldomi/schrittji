@@ -15,12 +15,14 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABL
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.slider.RangeSlider
 import com.google.android.material.snackbar.Snackbar
 import dev.sudominus.schrittji.databinding.ActivitySettingsBinding
 import dev.sudominus.schrittji.health.HealthConnectGateway
 import dev.sudominus.schrittji.simulation.SimulationConfig
 import dev.sudominus.schrittji.simulation.SimulationConfigStore
 import dev.sudominus.schrittji.simulation.SimulationCoordinator
+import dev.sudominus.schrittji.simulation.StepPublishingScheduler
 import kotlinx.coroutines.launch
 
 class SettingsActivity : AppCompatActivity() {
@@ -30,6 +32,8 @@ class SettingsActivity : AppCompatActivity() {
     private val simulationCoordinator by lazy {
         SimulationCoordinator(healthConnectGateway, SimulationConfigStore(applicationContext))
     }
+    private var suppressSliderCallbacks = false
+
     private val permissionsLauncher = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
     ) {
@@ -66,6 +70,9 @@ class SettingsActivity : AppCompatActivity() {
                 val config = buildConfigFromInputs() ?: return@launch
                 try {
                     val saved = simulationCoordinator.saveConfig(config)
+                    if (saved.automationEnabled) {
+                        StepPublishingScheduler.schedule(this@SettingsActivity)
+                    }
                     val result = simulationCoordinator.publishSinceLast(saved)
                     showSnackbar(result.summary)
                 } catch (exception: Exception) {
@@ -76,11 +83,17 @@ class SettingsActivity : AppCompatActivity() {
         binding.buttonSaveSettings.setOnClickListener {
             val config = buildConfigFromInputs() ?: return@setOnClickListener
             simulationCoordinator.saveConfig(config)
+            if (config.automationEnabled) {
+                StepPublishingScheduler.schedule(this)
+            } else {
+                StepPublishingScheduler.cancel(this)
+            }
             showSnackbar("Settings saved.")
             setResult(RESULT_OK)
             finish()
         }
 
+        wireWorkoutSliders()
         populate(simulationCoordinator.loadConfig())
         lifecycleScope.launch {
             updatePermissionButton()
@@ -91,6 +104,55 @@ class SettingsActivity : AppCompatActivity() {
         super.onResume()
         lifecycleScope.launch {
             updatePermissionButton()
+        }
+    }
+
+    private fun wireWorkoutSliders() {
+        val sliders = listOf(
+            binding.sliderRunningSessions to { refreshWorkoutSummaries(isRunning = true) },
+            binding.sliderRunningDuration to { refreshWorkoutSummaries(isRunning = true) },
+            binding.sliderCyclingSessions to { refreshWorkoutSummaries(isRunning = false, isCycling = true) },
+            binding.sliderCyclingDuration to { refreshWorkoutSummaries(isRunning = false, isCycling = true) },
+            binding.sliderMindfulnessSessions to { refreshWorkoutSummaries(isMindfulness = true) },
+            binding.sliderMindfulnessDuration to { refreshWorkoutSummaries(isMindfulness = true) }
+        )
+        sliders.forEach { (slider, action) ->
+            slider.addOnChangeListener { _, _, _ ->
+                if (!suppressSliderCallbacks) action()
+            }
+        }
+    }
+
+    private fun refreshWorkoutSummaries(
+        isRunning: Boolean = false,
+        isCycling: Boolean = false,
+        isMindfulness: Boolean = false
+    ) {
+        when {
+            isRunning -> {
+                val (a, b) = binding.sliderRunningSessions.valuesAsPair()
+                binding.textRunningSessionsSummary.text =
+                    getString(R.string.range_sessions_summary, a, b)
+                val (c, d) = binding.sliderRunningDuration.valuesAsPair()
+                binding.textRunningDurationSummary.text =
+                    getString(R.string.range_minutes_summary, c, d)
+            }
+            isCycling -> {
+                val (a, b) = binding.sliderCyclingSessions.valuesAsPair()
+                binding.textCyclingSessionsSummary.text =
+                    getString(R.string.range_sessions_summary, a, b)
+                val (c, d) = binding.sliderCyclingDuration.valuesAsPair()
+                binding.textCyclingDurationSummary.text =
+                    getString(R.string.range_minutes_summary, c, d)
+            }
+            isMindfulness -> {
+                val (a, b) = binding.sliderMindfulnessSessions.valuesAsPair()
+                binding.textMindfulnessSessionsSummary.text =
+                    getString(R.string.range_sessions_summary, a, b)
+                val (c, d) = binding.sliderMindfulnessDuration.valuesAsPair()
+                binding.textMindfulnessDurationSummary.text =
+                    getString(R.string.range_minutes_summary, c, d)
+            }
         }
     }
 
@@ -111,43 +173,53 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun populate(config: SimulationConfig) {
-        binding.switchBackgroundService.isChecked = config.automationEnabled
-        binding.switchDailySteps.isChecked = config.dailyStepsEnabled
-        binding.switchRunningEnabled.isChecked = config.runningEnabled
-        binding.switchCyclingEnabled.isChecked = config.cyclingEnabled
-        binding.switchMindfulnessEnabled.isChecked = config.mindfulnessEnabled
-        binding.editMinSteps.setText(config.minimumDailySteps.toString())
-        binding.editMaxSteps.setText(config.maximumDailySteps.toString())
-        binding.editRunningMinSessions.setText(config.runningMinSessionsPerWeek.toString())
-        binding.editRunningMaxSessions.setText(config.runningMaxSessionsPerWeek.toString())
-        binding.editRunningMinDuration.setText(config.runningMinDurationMinutes.toString())
-        binding.editRunningMaxDuration.setText(config.runningMaxDurationMinutes.toString())
-        binding.editCyclingMinSessions.setText(config.cyclingMinSessionsPerWeek.toString())
-        binding.editCyclingMaxSessions.setText(config.cyclingMaxSessionsPerWeek.toString())
-        binding.editCyclingMinDuration.setText(config.cyclingMinDurationMinutes.toString())
-        binding.editCyclingMaxDuration.setText(config.cyclingMaxDurationMinutes.toString())
-        binding.editMindfulnessMinSessions.setText(config.mindfulnessMinSessionsPerWeek.toString())
-        binding.editMindfulnessMaxSessions.setText(config.mindfulnessMaxSessionsPerWeek.toString())
-        binding.editMindfulnessMinDuration.setText(config.mindfulnessMinDurationMinutes.toString())
-        binding.editMindfulnessMaxDuration.setText(config.mindfulnessMaxDurationMinutes.toString())
+        suppressSliderCallbacks = true
+        try {
+            binding.switchBackgroundService.isChecked = config.automationEnabled
+            binding.switchDailySteps.isChecked = config.dailyStepsEnabled
+            binding.switchRunningEnabled.isChecked = config.runningEnabled
+            binding.switchCyclingEnabled.isChecked = config.cyclingEnabled
+            binding.switchMindfulnessEnabled.isChecked = config.mindfulnessEnabled
+            binding.editMinSteps.setText(config.minimumDailySteps.toString())
+            binding.editMaxSteps.setText(config.maximumDailySteps.toString())
+
+            binding.sliderRunningSessions.setValues(
+                config.runningMinSessionsPerWeek.toFloat(),
+                config.runningMaxSessionsPerWeek.toFloat()
+            )
+            binding.sliderRunningDuration.setValues(
+                config.runningMinDurationMinutes.toFloat(),
+                config.runningMaxDurationMinutes.toFloat()
+            )
+            binding.sliderCyclingSessions.setValues(
+                config.cyclingMinSessionsPerWeek.toFloat(),
+                config.cyclingMaxSessionsPerWeek.toFloat()
+            )
+            binding.sliderCyclingDuration.setValues(
+                config.cyclingMinDurationMinutes.toFloat(),
+                config.cyclingMaxDurationMinutes.toFloat()
+            )
+            binding.sliderMindfulnessSessions.setValues(
+                config.mindfulnessMinSessionsPerWeek.toFloat(),
+                config.mindfulnessMaxSessionsPerWeek.toFloat()
+            )
+            binding.sliderMindfulnessDuration.setValues(
+                config.mindfulnessMinDurationMinutes.toFloat(),
+                config.mindfulnessMaxDurationMinutes.toFloat()
+            )
+
+            refreshWorkoutSummaries(isRunning = true)
+            refreshWorkoutSummaries(isCycling = true)
+            refreshWorkoutSummaries(isMindfulness = true)
+        } finally {
+            suppressSliderCallbacks = false
+        }
     }
 
     private fun buildConfigFromInputs(): SimulationConfig? {
         clearErrors()
         val minSteps = binding.editMinSteps.text?.toString()?.trim()?.toIntOrNull()
         val maxSteps = binding.editMaxSteps.text?.toString()?.trim()?.toIntOrNull()
-        val runningMinSessions = binding.editRunningMinSessions.text?.toString()?.trim()?.toIntOrNull()
-        val runningMaxSessions = binding.editRunningMaxSessions.text?.toString()?.trim()?.toIntOrNull()
-        val runningMinDuration = binding.editRunningMinDuration.text?.toString()?.trim()?.toIntOrNull()
-        val runningMaxDuration = binding.editRunningMaxDuration.text?.toString()?.trim()?.toIntOrNull()
-        val cyclingMinSessions = binding.editCyclingMinSessions.text?.toString()?.trim()?.toIntOrNull()
-        val cyclingMaxSessions = binding.editCyclingMaxSessions.text?.toString()?.trim()?.toIntOrNull()
-        val cyclingMinDuration = binding.editCyclingMinDuration.text?.toString()?.trim()?.toIntOrNull()
-        val cyclingMaxDuration = binding.editCyclingMaxDuration.text?.toString()?.trim()?.toIntOrNull()
-        val mindfulnessMinSessions = binding.editMindfulnessMinSessions.text?.toString()?.trim()?.toIntOrNull()
-        val mindfulnessMaxSessions = binding.editMindfulnessMaxSessions.text?.toString()?.trim()?.toIntOrNull()
-        val mindfulnessMinDuration = binding.editMindfulnessMinDuration.text?.toString()?.trim()?.toIntOrNull()
-        val mindfulnessMaxDuration = binding.editMindfulnessMaxDuration.text?.toString()?.trim()?.toIntOrNull()
 
         if (minSteps == null || minSteps !in 1_000..30_000) {
             binding.inputMinSteps.error = "1,000 to 30,000."
@@ -157,24 +229,19 @@ class SettingsActivity : AppCompatActivity() {
             binding.inputMaxSteps.error = "Must be higher than minimum."
             return null
         }
-        if (!validateSessionRange(binding.inputRunningMinSessions, binding.inputRunningMaxSessions, runningMinSessions, runningMaxSessions, 0, 7)) {
-            return null
-        }
-        if (!validateSessionRange(binding.inputCyclingMinSessions, binding.inputCyclingMaxSessions, cyclingMinSessions, cyclingMaxSessions, 0, 7)) {
-            return null
-        }
-        if (!validateDurationRange(binding.inputRunningMinDuration, binding.inputRunningMaxDuration, runningMinDuration, runningMaxDuration)) {
-            return null
-        }
-        if (!validateDurationRange(binding.inputCyclingMinDuration, binding.inputCyclingMaxDuration, cyclingMinDuration, cyclingMaxDuration)) {
-            return null
-        }
-        if (!validateSessionRange(binding.inputMindfulnessMinSessions, binding.inputMindfulnessMaxSessions, mindfulnessMinSessions, mindfulnessMaxSessions, 0, 7)) {
-            return null
-        }
-        if (!validateDurationRange(binding.inputMindfulnessMinDuration, binding.inputMindfulnessMaxDuration, mindfulnessMinDuration, mindfulnessMaxDuration)) {
-            return null
-        }
+
+        val runningMinSessions = binding.sliderRunningSessions.values[0].toInt()
+        val runningMaxSessions = binding.sliderRunningSessions.values[1].toInt()
+        val runningMinDuration = binding.sliderRunningDuration.values[0].toInt()
+        val runningMaxDuration = binding.sliderRunningDuration.values[1].toInt()
+        val cyclingMinSessions = binding.sliderCyclingSessions.values[0].toInt()
+        val cyclingMaxSessions = binding.sliderCyclingSessions.values[1].toInt()
+        val cyclingMinDuration = binding.sliderCyclingDuration.values[0].toInt()
+        val cyclingMaxDuration = binding.sliderCyclingDuration.values[1].toInt()
+        val mindfulnessMinSessions = binding.sliderMindfulnessSessions.values[0].toInt()
+        val mindfulnessMaxSessions = binding.sliderMindfulnessSessions.values[1].toInt()
+        val mindfulnessMinDuration = binding.sliderMindfulnessDuration.values[0].toInt()
+        val mindfulnessMaxDuration = binding.sliderMindfulnessDuration.values[1].toInt()
 
         val current = simulationCoordinator.loadConfig()
         return current.copy(
@@ -185,68 +252,24 @@ class SettingsActivity : AppCompatActivity() {
             runningEnabled = binding.switchRunningEnabled.isChecked,
             cyclingEnabled = binding.switchCyclingEnabled.isChecked,
             mindfulnessEnabled = binding.switchMindfulnessEnabled.isChecked,
-            runningMinSessionsPerWeek = runningMinSessions!!,
-            runningMaxSessionsPerWeek = runningMaxSessions!!,
-            runningMinDurationMinutes = runningMinDuration!!,
-            runningMaxDurationMinutes = runningMaxDuration!!,
-            cyclingMinSessionsPerWeek = cyclingMinSessions!!,
-            cyclingMaxSessionsPerWeek = cyclingMaxSessions!!,
-            cyclingMinDurationMinutes = cyclingMinDuration!!,
-            cyclingMaxDurationMinutes = cyclingMaxDuration!!,
-            mindfulnessMinSessionsPerWeek = mindfulnessMinSessions!!,
-            mindfulnessMaxSessionsPerWeek = mindfulnessMaxSessions!!,
-            mindfulnessMinDurationMinutes = mindfulnessMinDuration!!,
-            mindfulnessMaxDurationMinutes = mindfulnessMaxDuration!!
+            runningMinSessionsPerWeek = runningMinSessions,
+            runningMaxSessionsPerWeek = runningMaxSessions,
+            runningMinDurationMinutes = runningMinDuration,
+            runningMaxDurationMinutes = runningMaxDuration,
+            cyclingMinSessionsPerWeek = cyclingMinSessions,
+            cyclingMaxSessionsPerWeek = cyclingMaxSessions,
+            cyclingMinDurationMinutes = cyclingMinDuration,
+            cyclingMaxDurationMinutes = cyclingMaxDuration,
+            mindfulnessMinSessionsPerWeek = mindfulnessMinSessions,
+            mindfulnessMaxSessionsPerWeek = mindfulnessMaxSessions,
+            mindfulnessMinDurationMinutes = mindfulnessMinDuration,
+            mindfulnessMaxDurationMinutes = mindfulnessMaxDuration
         )
     }
 
-    private fun validateSessionRange(
-        minLayout: com.google.android.material.textfield.TextInputLayout,
-        maxLayout: com.google.android.material.textfield.TextInputLayout,
-        minValue: Int?,
-        maxValue: Int?,
-        lowerBound: Int,
-        upperBound: Int
-    ): Boolean {
-        if (minValue == null || maxValue == null || minValue !in lowerBound..upperBound || maxValue !in lowerBound..upperBound || maxValue < minValue) {
-            minLayout.error = "$lowerBound to $upperBound."
-            maxLayout.error = "Must be >= min."
-            return false
-        }
-        return true
-    }
-
-    private fun validateDurationRange(
-        minLayout: com.google.android.material.textfield.TextInputLayout,
-        maxLayout: com.google.android.material.textfield.TextInputLayout,
-        minValue: Int?,
-        maxValue: Int?
-    ): Boolean {
-        if (minValue == null || maxValue == null || minValue !in 10..240 || maxValue !in 10..240 || maxValue < minValue) {
-            minLayout.error = "10 to 240."
-            maxLayout.error = "Must be >= min."
-            return false
-        }
-        return true
-    }
-
     private fun clearErrors() {
-        listOf(
-            binding.inputMinSteps,
-            binding.inputMaxSteps,
-            binding.inputRunningMinSessions,
-            binding.inputRunningMaxSessions,
-            binding.inputRunningMinDuration,
-            binding.inputRunningMaxDuration,
-            binding.inputCyclingMinSessions,
-            binding.inputCyclingMaxSessions,
-            binding.inputCyclingMinDuration,
-            binding.inputCyclingMaxDuration,
-            binding.inputMindfulnessMinSessions,
-            binding.inputMindfulnessMaxSessions,
-            binding.inputMindfulnessMinDuration,
-            binding.inputMindfulnessMaxDuration
-        ).forEach { it.error = null }
+        binding.inputMinSteps.error = null
+        binding.inputMaxSteps.error = null
     }
 
     private fun openHealthConnect() {
@@ -274,4 +297,9 @@ class SettingsActivity : AppCompatActivity() {
     private fun showSnackbar(message: String) {
         Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
     }
+}
+
+private fun RangeSlider.valuesAsPair(): Pair<Int, Int> {
+    val v = values
+    return v[0].toInt() to v[1].toInt()
 }

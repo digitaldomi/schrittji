@@ -112,16 +112,16 @@ class DayTimelineChartView @JvmOverloads constructor(
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
-        textSize = 10f * scaledDensity
+        textSize = 12f * scaledDensity
     }
     private val yAxisLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.RIGHT
-        textSize = 9f * scaledDensity
-        alpha = 200
+        textSize = 11f * scaledDensity
+        alpha = 220
     }
 
-    private val yAxisGutterPx = resources.getDimensionPixelSize(R.dimen.chart_y_axis_gutter).toFloat()
+    private val yAxisGutterMinPx = resources.getDimensionPixelSize(R.dimen.chart_y_axis_gutter_min).toFloat()
 
     private var buckets: List<TimelineBucket> = emptyList()
     private var maxValue: Float = 1f
@@ -171,7 +171,14 @@ class DayTimelineChartView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val chartLeft = paddingLeft + yAxisGutterPx
+        val yGutter = computeYAxisGutterPx(
+            yAxisScale,
+            yAxisLabelPaint,
+            yAxisGutterMinPx,
+            4f * density,
+            6f * density
+        )
+        val chartLeft = paddingLeft + yGutter
         val chartRight = width - paddingRight - 12f * density
         val chartTop = paddingTop + 10f * density
         val chartBottom = height - paddingBottom - 18f * density
@@ -379,13 +386,13 @@ class DayTimelineChartView @JvmOverloads constructor(
     ) {
         val h = chartBottom - chartTop
         if (h <= 0f || yAxisScale.axisMax <= 0f) return
-        val labelX = chartLeft - (4f * density)
+        val labelX = chartLeft - (6f * density)
         for (v in ChartAxisLabels.tickValues(yAxisScale)) {
             if (v > yAxisScale.axisMax + 0.01f) continue
             val frac = (v / yAxisScale.axisMax).coerceIn(0f, 1f)
             val y = chartBottom - frac * h
             canvas.drawLine(chartLeft - (4f * density), y, chartLeft, y, axisPaint)
-            canvas.drawText(ChartAxisLabels.formatTick(v), labelX, y + (3f * density), yAxisLabelPaint)
+            canvas.drawText(ChartAxisLabels.formatTick(v), labelX, y + (4f * density), yAxisLabelPaint)
         }
     }
 

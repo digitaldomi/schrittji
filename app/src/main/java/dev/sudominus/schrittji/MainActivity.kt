@@ -32,6 +32,7 @@ import dev.sudominus.schrittji.health.HealthConnectStepsSnapshot
 import dev.sudominus.schrittji.simulation.SimulationConfig
 import dev.sudominus.schrittji.simulation.SimulationConfigStore
 import dev.sudominus.schrittji.simulation.SimulationCoordinator
+import dev.sudominus.schrittji.simulation.StepPublishingScheduler
 import dev.sudominus.schrittji.simulation.ProjectedStepDayDetail
 import dev.sudominus.schrittji.simulation.WorkoutPlan
 import dev.sudominus.schrittji.simulation.WorkoutType
@@ -171,15 +172,35 @@ class MainActivity : AppCompatActivity() {
             okText = "Permissions granted",
             badText = "Permissions missing"
         )
-        val updatesOk = config.lastPublishedEpochMilli?.let {
+        val workerScheduled = StepPublishingScheduler.isPeriodicScheduled(this)
+        if (config.automationEnabled && !workerScheduled) {
+            StepPublishingScheduler.schedule(this)
+        }
+        val lastPublishedFresh = config.lastPublishedEpochMilli?.let {
             Instant.ofEpochMilli(it).isAfter(Instant.now().minusSeconds(45 * 60))
         } == true
+        val automationOn = config.automationEnabled
+        val workerScheduledAfterKick = if (config.automationEnabled && !workerScheduled) {
+            StepPublishingScheduler.isPeriodicScheduled(this)
+        } else {
+            workerScheduled
+        }
+        val updatesOk = lastPublishedFresh || (automationOn && workerScheduledAfterKick)
+        val updatesOkText = if (lastPublishedFresh) {
+            getString(R.string.status_updates_ok_recent)
+        } else {
+            getString(R.string.status_updates_ok_background_stale)
+        }
+        val updatesBadText = when {
+            !automationOn -> getString(R.string.status_updates_bad_no_automation)
+            else -> getString(R.string.status_updates_bad_automation_not_running)
+        }
         updateStatus(
             view = binding.dotUpdates,
             textView = binding.textUpdatesStatus,
             ok = updatesOk,
-            okText = "Updates current",
-            badText = "Updates need sync"
+            okText = updatesOkText,
+            badText = updatesBadText
         )
         applyCollapsedStatusSummary(availability, permissionGranted, updatesOk)
         binding.panelStatusExpanded.visibility = if (statusPanelExpanded) View.VISIBLE else View.GONE
