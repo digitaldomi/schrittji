@@ -8,6 +8,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dev.sudominus.schrittji.health.HealthConnectGateway
@@ -81,5 +82,15 @@ object StepPublishingScheduler {
     fun cancel(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(PERIODIC_WORK_NAME)
         WorkManager.getInstance(context).cancelUniqueWork(IMMEDIATE_WORK_NAME)
+    }
+
+    /** True when the periodic WorkManager job is enqueued or running (may still be delayed by Doze). */
+    fun isPeriodicScheduled(context: Context): Boolean {
+        return try {
+            val infos = WorkManager.getInstance(context).getWorkInfosForUniqueWork(PERIODIC_WORK_NAME).get()
+            infos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING }
+        } catch (_: Exception) {
+            false
+        }
     }
 }
