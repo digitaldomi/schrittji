@@ -4,4 +4,6 @@
     <dimen name="chart_main_min_expand">160dp</dimen>
     <dimen name="main_summary_panel_height">220dp</dimen>
     <dimen name="chart_y_axis_gutter">40dp</dimen>
+    <!-- Minimum left gutter; actual width grows with the widest Y tick label. -->
+    <dimen name="chart_y_axis_gutter_min">28dp</dimen>
 </resources>
