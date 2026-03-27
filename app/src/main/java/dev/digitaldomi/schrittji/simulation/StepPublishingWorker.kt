@@ -52,8 +52,8 @@ class StepPublishingWorker(
 }
 
 object StepPublishingScheduler {
-    private const val PERIODIC_WORK_NAME = "schrittji-step-periodic"
-    private const val IMMEDIATE_WORK_NAME = "schrittji-step-immediate"
+    const val PERIODIC_WORK_NAME = "schrittji-step-periodic"
+    const val IMMEDIATE_WORK_NAME = "schrittji-step-immediate"
 
     fun schedule(context: Context) {
         val workManager = WorkManager.getInstance(context)

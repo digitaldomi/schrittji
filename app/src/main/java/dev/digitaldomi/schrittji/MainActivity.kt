@@ -14,6 +14,8 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILA
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dev.digitaldomi.schrittji.chart.DualSeriesBarPoint
 import dev.digitaldomi.schrittji.chart.TimelineSeries
@@ -25,6 +27,7 @@ import dev.digitaldomi.schrittji.health.HealthConnectStepsSnapshot
 import dev.digitaldomi.schrittji.simulation.SimulationConfig
 import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
 import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
+import dev.digitaldomi.schrittji.simulation.StepPublishingScheduler
 import dev.digitaldomi.schrittji.simulation.WorkoutPlan
 import dev.digitaldomi.schrittji.simulation.WorkoutType
 import java.time.DayOfWeek
@@ -38,7 +41,9 @@ import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.round
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -174,17 +179,45 @@ class MainActivity : AppCompatActivity() {
             okText = "Permissions granted",
             badText = "Permissions missing"
         )
-        val updatesOk = config.lastPublishedEpochMilli?.let {
+        val dataFresh = config.lastPublishedEpochMilli?.let {
             Instant.ofEpochMilli(it).isAfter(Instant.now().minusSeconds(45 * 60))
         } == true
+        val workManager = WorkManager.getInstance(applicationContext)
+        val workerActive = withContext(Dispatchers.IO) {
+            val immediate = workManager
+                .getWorkInfosForUniqueWork(StepPublishingScheduler.IMMEDIATE_WORK_NAME)
+                .get()
+            val periodic = workManager
+                .getWorkInfosForUniqueWork(StepPublishingScheduler.PERIODIC_WORK_NAME)
+                .get()
+            (immediate + periodic).any { it.state == WorkInfo.State.RUNNING }
+        }
+        val updatesOk = dataFresh || (config.automationEnabled && workerActive)
+        val updatesOkText = when {
+            dataFresh -> getString(R.string.status_updates_ok)
+            config.automationEnabled && workerActive -> getString(R.string.status_updates_syncing)
+            else -> getString(R.string.status_updates_ok)
+        }
+        val updatesBadText = when {
+            config.automationEnabled ->
+                getString(R.string.status_updates_stale_bg_idle)
+            else ->
+                getString(R.string.status_updates_stale_bg_off)
+        }
         updateStatus(
             view = binding.dotUpdates,
             textView = binding.textUpdatesStatus,
             ok = updatesOk,
-            okText = "Updates current",
-            badText = "Updates need sync"
+            okText = updatesOkText,
+            badText = updatesBadText
         )
-        applyCollapsedStatusSummary(availability, permissionGranted, updatesOk)
+        applyCollapsedStatusSummary(
+            availability,
+            permissionGranted,
+            dataFresh,
+            config.automationEnabled,
+            workerActive
+        )
         binding.panelStatusExpanded.visibility = if (statusPanelExpanded) View.VISIBLE else View.GONE
         binding.iconStatusExpand.rotation = if (statusPanelExpanded) 180f else 0f
 
@@ -439,10 +472,13 @@ class MainActivity : AppCompatActivity() {
     private fun applyCollapsedStatusSummary(
         availability: Int,
         permissionGranted: Boolean,
-        updatesOk: Boolean
+        dataFresh: Boolean,
+        automationEnabled: Boolean,
+        workerActive: Boolean
     ) {
         val dot = binding.dotStatusSummary
         val label = binding.textStatusSummary
+        val updatesGreen = dataFresh || (automationEnabled && workerActive)
         when {
             availability != SDK_AVAILABLE -> {
                 dot.backgroundTintList = ColorStateList.valueOf(
@@ -456,11 +492,16 @@ class MainActivity : AppCompatActivity() {
                 )
                 label.text = getString(R.string.status_summary_warning_permissions)
             }
-            !updatesOk -> {
+            !updatesGreen -> {
                 dot.backgroundTintList = ColorStateList.valueOf(
                     ContextCompat.getColor(this, R.color.status_warn)
                 )
-                label.text = getString(R.string.status_summary_warning_updates)
+                label.text = when {
+                    !automationEnabled ->
+                        getString(R.string.status_summary_warning_updates_no_bg)
+                    else ->
+                        getString(R.string.status_summary_warning_updates_bg_idle)
+                }
             }
             else -> {
                 dot.backgroundTintList = ColorStateList.valueOf(
