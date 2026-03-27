@@ -12,7 +12,6 @@
         android:layout_height="wrap_content"
         android:background="@color/surface_background"
         android:elevation="0dp"
-        android:title="@string/settings"
         android:titleTextColor="@color/brand_text" />
 
     <ScrollView
@@ -30,10 +29,18 @@
             android:paddingBottom="8dp">
 
             <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_screen_headline"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                android:textColor="@color/brand_text" />
+
+            <TextView
                 android:id="@+id/textActionsHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="16dp"
                 android:text="@string/settings_actions"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
                 android:textColor="@color/brand_text" />
@@ -44,22 +51,31 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="48dp"
                 android:text="@string/grant_health_permission" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonOpenHealthConnect"
-                style="@style/Widget.Material3.Button.TonalButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="48dp"
                 android:text="@string/open_health_connect" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonSyncNow"
-                style="@style/Widget.Material3.Button.TonalButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="48dp"
                 android:text="@string/publish_missing_recent_data" />
 
             <com.google.android.material.button.MaterialButton
@@ -67,7 +83,10 @@
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="48dp"
                 android:text="@string/open_health_data_browser" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
@@ -139,9 +158,17 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="@string/running_workouts"
+                android:layout_marginTop="24dp"
+                android:text="@string/activity_settings"
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textColor="@color/brand_text" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/running_workouts"
+                android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
                 android:textColor="@color/brand_text" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
@@ -152,92 +179,65 @@
                 android:text="@string/enable_running_workouts"
                 android:textColor="@color/brand_text" />
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/inputRunningMinSessions"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="@string/min_sessions_per_week"
-                app:boxBackgroundColor="@android:color/white"
-                app:boxStrokeColor="@color/brand_primary_dark"
-                app:hintTextColor="@color/brand_text">
+                android:text="@string/sessions_per_week_range"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="@color/brand_text" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editRunningMinSessions"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textColor="@color/brand_text"
-                    android:textColorHint="@color/brand_text" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/inputRunningMaxSessions"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <TextView
+                android:id="@+id/textRunningSessionsValue"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/max_sessions_per_week"
-                app:boxBackgroundColor="@android:color/white"
-                app:boxStrokeColor="@color/brand_primary_dark"
-                app:hintTextColor="@color/brand_text">
+                android:layout_marginTop="2dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="@color/brand_text"
+                android:alpha="0.85" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editRunningMaxSessions"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textColor="@color/brand_text"
-                    android:textColorHint="@color/brand_text" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/inputRunningMinDuration"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <com.google.android.material.slider.RangeSlider
+                android:id="@+id/sliderRunningSessions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/min_duration_minutes"
-                app:boxBackgroundColor="@android:color/white"
-                app:boxStrokeColor="@color/brand_primary_dark"
-                app:hintTextColor="@color/brand_text">
+                android:layout_marginTop="0dp"
+                android:stepSize="1"
+                android:valueFrom="0"
+                android:valueTo="7"
+                app:labelBehavior="gone" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editRunningMinDuration"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textColor="@color/brand_text"
-                    android:textColorHint="@color/brand_text" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/inputRunningMaxDuration"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/max_duration_minutes"
-                app:boxBackgroundColor="@android:color/white"
-                app:boxStrokeColor="@color/brand_primary_dark"
-                app:hintTextColor="@color/brand_text">
+                android:layout_marginTop="8dp"
+                android:text="@string/session_duration_range"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="@color/brand_text" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editRunningMaxDuration"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textColor="@color/brand_text"
-                    android:textColorHint="@color/brand_text" />
-            </com.google.android.material.textfield.TextInputLayout>
+            <TextView
+                android:id="@+id/textRunningDurationValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="@color/brand_text"
+                android:alpha="0.85" />
+
+            <com.google.android.material.slider.RangeSlider
+                android:id="@+id/sliderRunningDuration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:stepSize="1"
+                android:valueFrom="10"
+                android:valueTo="240"
+                app:labelBehavior="gone" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:text="@string/cycling_workouts"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
                 android:textColor="@color/brand_text" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
@@ -248,85 +248,57 @@
                 android:text="@string/enable_cycling_workouts"
                 android:textColor="@color/brand_text" />
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/inputCyclingMinSessions"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="@string/min_sessions_per_week"
-                app:boxBackgroundColor="@android:color/white"
-                app:boxStrokeColor="@color/brand_primary_dark"
-                app:hintTextColor="@color/brand_text">
+                android:text="@string/sessions_per_week_range"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="@color/brand_text" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editCyclingMinSessions"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textColor="@color/brand_text"
-                    android:textColorHint="@color/brand_text" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/inputCyclingMaxSessions"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <TextView
+                android:id="@+id/textCyclingSessionsValue"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/max_sessions_per_week"
-                app:boxBackgroundColor="@android:color/white"
-                app:boxStrokeColor="@color/brand_primary_dark"
-                app:hintTextColor="@color/brand_text">
+                android:layout_marginTop="2dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="@color/brand_text"
+                android:alpha="0.85" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editCyclingMaxSessions"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textColor="@color/brand_text"
-                    android:textColorHint="@color/brand_text" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/inputCyclingMinDuration"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <com.google.android.material.slider.RangeSlider
+                android:id="@+id/sliderCyclingSessions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/min_duration_minutes"
-                app:boxBackgroundColor="@android:color/white"
-                app:boxStrokeColor="@color/brand_primary_dark"
-                app:hintTextColor="@color/brand_text">
+                android:stepSize="1"
+                android:valueFrom="0"
+                android:valueTo="7"
+                app:labelBehavior="gone" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editCyclingMinDuration"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textColor="@color/brand_text"
-                    android:textColorHint="@color/brand_text" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/inputCyclingMaxDuration"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/max_duration_minutes"
-                app:boxBackgroundColor="@android:color/white"
-                app:boxStrokeColor="@color/brand_primary_dark"
-                app:hintTextColor="@color/brand_text">
+                android:layout_marginTop="8dp"
+                android:text="@string/session_duration_range"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="@color/brand_text" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editCyclingMaxDuration"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textColor="@color/brand_text"
-                    android:textColorHint="@color/brand_text" />
-            </com.google.android.material.textfield.TextInputLayout>
+            <TextView
+                android:id="@+id/textCyclingDurationValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="@color/brand_text"
+                android:alpha="0.85" />
+
+            <com.google.android.material.slider.RangeSlider
+                android:id="@+id/sliderCyclingDuration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:stepSize="1"
+                android:valueFrom="10"
+                android:valueTo="240"
+                app:labelBehavior="gone" />
         </LinearLayout>
     </ScrollView>
 
