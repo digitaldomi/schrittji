@@ -8,6 +8,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.concurrent.futures.await
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -85,10 +86,14 @@ object StepPublishingScheduler {
     }
 
     /** True when the periodic WorkManager job is enqueued or running (may still be delayed by Doze). */
-    fun isPeriodicScheduled(context: Context): Boolean {
+    suspend fun isPeriodicScheduled(context: Context): Boolean {
         return try {
-            val infos = WorkManager.getInstance(context).getWorkInfosForUniqueWork(PERIODIC_WORK_NAME).get()
-            infos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING }
+            val infos = WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWork(PERIODIC_WORK_NAME)
+                .await()
+            infos.any { info ->
+                info.state == WorkInfo.State.ENQUEUED || info.state == WorkInfo.State.RUNNING
+            }
         } catch (_: Exception) {
             false
         }

@@ -172,15 +172,20 @@ class MainActivity : AppCompatActivity() {
             okText = "Permissions granted",
             badText = "Permissions missing"
         )
-        if (config.automationEnabled && !StepPublishingScheduler.isPeriodicScheduled(this)) {
+        val workerScheduled = StepPublishingScheduler.isPeriodicScheduled(this)
+        if (config.automationEnabled && !workerScheduled) {
             StepPublishingScheduler.schedule(this)
         }
         val lastPublishedFresh = config.lastPublishedEpochMilli?.let {
             Instant.ofEpochMilli(it).isAfter(Instant.now().minusSeconds(45 * 60))
         } == true
         val automationOn = config.automationEnabled
-        val workerScheduled = StepPublishingScheduler.isPeriodicScheduled(this)
-        val updatesOk = lastPublishedFresh || (automationOn && workerScheduled)
+        val workerScheduledAfterKick = if (config.automationEnabled && !workerScheduled) {
+            StepPublishingScheduler.isPeriodicScheduled(this)
+        } else {
+            workerScheduled
+        }
+        val updatesOk = lastPublishedFresh || (automationOn && workerScheduledAfterKick)
         val updatesOkText = if (lastPublishedFresh) {
             getString(R.string.status_updates_ok_recent)
         } else {
