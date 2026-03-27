@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji
+package dev.sudominus.schrittji
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -16,11 +16,11 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILA
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
-import dev.digitaldomi.schrittji.databinding.ActivitySettingsBinding
-import dev.digitaldomi.schrittji.health.HealthConnectGateway
-import dev.digitaldomi.schrittji.simulation.SimulationConfig
-import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
-import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
+import dev.sudominus.schrittji.databinding.ActivitySettingsBinding
+import dev.sudominus.schrittji.health.HealthConnectGateway
+import dev.sudominus.schrittji.simulation.SimulationConfig
+import dev.sudominus.schrittji.simulation.SimulationConfigStore
+import dev.sudominus.schrittji.simulation.SimulationCoordinator
 import kotlinx.coroutines.launch
 
 class SettingsActivity : AppCompatActivity() {

@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji.simulation
+package dev.sudominus.schrittji.simulation
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
@@ -10,7 +10,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import dev.digitaldomi.schrittji.health.HealthConnectGateway
+import dev.sudominus.schrittji.health.HealthConnectGateway
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 

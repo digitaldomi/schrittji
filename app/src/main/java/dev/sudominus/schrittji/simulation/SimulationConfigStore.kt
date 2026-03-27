@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji.simulation
+package dev.sudominus.schrittji.simulation
 
 import android.content.Context
 import java.security.SecureRandom

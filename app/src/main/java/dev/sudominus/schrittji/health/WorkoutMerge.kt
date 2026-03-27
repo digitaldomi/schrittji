@@ -1,6 +1,6 @@
-package dev.digitaldomi.schrittji.health
+package dev.sudominus.schrittji.health
 
-import dev.digitaldomi.schrittji.simulation.WorkoutPlan
+import dev.sudominus.schrittji.simulation.WorkoutPlan
 import java.time.ZonedDateTime
 
 /**

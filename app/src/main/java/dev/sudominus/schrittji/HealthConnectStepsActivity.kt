@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji
+package dev.sudominus.schrittji
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
@@ -8,12 +8,12 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
-import dev.digitaldomi.schrittji.chart.BarChartPoint
-import dev.digitaldomi.schrittji.databinding.ActivityHealthConnectStepsBinding
-import dev.digitaldomi.schrittji.databinding.ViewHealthConnectStepsHeaderBinding
-import dev.digitaldomi.schrittji.health.HealthConnectGateway
-import dev.digitaldomi.schrittji.health.HealthConnectStepDaySummary
-import dev.digitaldomi.schrittji.health.HealthConnectStepsSnapshot
+import dev.sudominus.schrittji.chart.BarChartPoint
+import dev.sudominus.schrittji.databinding.ActivityHealthConnectStepsBinding
+import dev.sudominus.schrittji.databinding.ViewHealthConnectStepsHeaderBinding
+import dev.sudominus.schrittji.health.HealthConnectGateway
+import dev.sudominus.schrittji.health.HealthConnectStepDaySummary
+import dev.sudominus.schrittji.health.HealthConnectStepsSnapshot
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters

@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji.simulation
+package dev.sudominus.schrittji.simulation
 
 import java.time.DayOfWeek
 import java.time.LocalDate

@@ -1,12 +1,12 @@
-package dev.digitaldomi.schrittji
+package dev.sudominus.schrittji
 
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
-import dev.digitaldomi.schrittji.databinding.ItemStepRecordBinding
-import dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry
+import dev.sudominus.schrittji.databinding.ItemStepRecordBinding
+import dev.sudominus.schrittji.health.HealthConnectStepRecordEntry
 import java.time.format.DateTimeFormatter
 
 class StepRecordAdapter(context: Context) : BaseAdapter() {

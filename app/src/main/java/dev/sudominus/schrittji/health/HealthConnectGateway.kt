@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji.health
+package dev.sudominus.schrittji.health
 
 import android.content.Context
 import android.util.Log
@@ -17,10 +17,10 @@ import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.Energy
 import androidx.health.connect.client.units.Length
-import dev.digitaldomi.schrittji.R
-import dev.digitaldomi.schrittji.simulation.MinuteStepSlice
-import dev.digitaldomi.schrittji.simulation.WorkoutPlan
-import dev.digitaldomi.schrittji.simulation.WorkoutType
+import dev.sudominus.schrittji.R
+import dev.sudominus.schrittji.simulation.MinuteStepSlice
+import dev.sudominus.schrittji.simulation.WorkoutPlan
+import dev.sudominus.schrittji.simulation.WorkoutType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId

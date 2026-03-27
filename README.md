@@ -2,6 +2,8 @@
 
 Android app that **generates realistic step patterns** and **writes them to [Health Connect](https://developer.android.com/health-and-fitness/guides/health-connect)**. Use it to seed history, keep data topped up, and preview how charts look with **recorded vs projected** activity.
 
+**Application ID:** `dev.sudominus.schrittji` (installs as a separate app from older `dev.digitaldomi.schrittji` builds).
+
 ## Features
 
 - **Day & week charts** — Minute-level steps (Health Connect + simulated projection). **Today** splits at a **now** line: past = recorded, future = projection only.

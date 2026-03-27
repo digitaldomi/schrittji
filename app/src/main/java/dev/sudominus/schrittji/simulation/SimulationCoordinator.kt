@@ -1,6 +1,6 @@
-package dev.digitaldomi.schrittji.simulation
+package dev.sudominus.schrittji.simulation
 
-import dev.digitaldomi.schrittji.health.HealthConnectGateway
+import dev.sudominus.schrittji.health.HealthConnectGateway
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate

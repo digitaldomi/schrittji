@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji.chart
+package dev.sudominus.schrittji.chart
 
 import android.content.Context
 import android.graphics.Canvas
@@ -7,7 +7,7 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.View.MeasureSpec
-import dev.digitaldomi.schrittji.R
+import dev.sudominus.schrittji.R
 import kotlin.math.max
 
 data class DualSeriesBarPoint(

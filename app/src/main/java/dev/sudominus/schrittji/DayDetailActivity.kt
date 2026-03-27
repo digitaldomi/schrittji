@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji
+package dev.sudominus.schrittji
 
 import android.content.Context
 import android.content.Intent
@@ -9,19 +9,19 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
-import dev.digitaldomi.schrittji.chart.ProjectionTimeline
-import dev.digitaldomi.schrittji.chart.TimelineSeries
-import dev.digitaldomi.schrittji.chart.TimelineBarEntry
-import dev.digitaldomi.schrittji.chart.TimelineWorkoutKind
-import dev.digitaldomi.schrittji.databinding.ActivityDayDetailBinding
-import dev.digitaldomi.schrittji.health.HealthConnectExerciseSession
-import dev.digitaldomi.schrittji.health.HealthConnectGateway
-import dev.digitaldomi.schrittji.health.WorkoutMerge
-import dev.digitaldomi.schrittji.health.HealthConnectStepRecordEntry
-import dev.digitaldomi.schrittji.simulation.SimulationConfigStore
-import dev.digitaldomi.schrittji.simulation.SimulationCoordinator
-import dev.digitaldomi.schrittji.simulation.WorkoutPlan
-import dev.digitaldomi.schrittji.simulation.WorkoutType
+import dev.sudominus.schrittji.chart.ProjectionTimeline
+import dev.sudominus.schrittji.chart.TimelineSeries
+import dev.sudominus.schrittji.chart.TimelineBarEntry
+import dev.sudominus.schrittji.chart.TimelineWorkoutKind
+import dev.sudominus.schrittji.databinding.ActivityDayDetailBinding
+import dev.sudominus.schrittji.health.HealthConnectExerciseSession
+import dev.sudominus.schrittji.health.HealthConnectGateway
+import dev.sudominus.schrittji.health.WorkoutMerge
+import dev.sudominus.schrittji.health.HealthConnectStepRecordEntry
+import dev.sudominus.schrittji.simulation.SimulationConfigStore
+import dev.sudominus.schrittji.simulation.SimulationCoordinator
+import dev.sudominus.schrittji.simulation.WorkoutPlan
+import dev.sudominus.schrittji.simulation.WorkoutType
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -166,7 +166,7 @@ class DayDetailActivity : AppCompatActivity() {
     }
 
     private fun renderProjectionDay(
-        detail: dev.digitaldomi.schrittji.simulation.ProjectedStepDayDetail,
+        detail: dev.sudominus.schrittji.simulation.ProjectedStepDayDetail,
         hcSessions: List<HealthConnectExerciseSession>,
         exerciseReadError: String?
     ) {

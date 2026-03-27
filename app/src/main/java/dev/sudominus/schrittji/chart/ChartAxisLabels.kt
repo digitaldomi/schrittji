@@ -1,4 +1,4 @@
-package dev.digitaldomi.schrittji.chart
+package dev.sudominus.schrittji.chart
 
 import kotlin.math.ceil
 import kotlin.math.floor

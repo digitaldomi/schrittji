@@ -1,6 +1,6 @@
-package dev.digitaldomi.schrittji.chart
+package dev.sudominus.schrittji.chart
 
-import dev.digitaldomi.schrittji.simulation.MinuteStepSlice
+import dev.sudominus.schrittji.simulation.MinuteStepSlice
 import java.time.LocalDate
 import java.time.ZoneId
 

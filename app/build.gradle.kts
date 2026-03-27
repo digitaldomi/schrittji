@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.digitaldomi.schrittji"
+    namespace = "dev.sudominus.schrittji"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "dev.digitaldomi.schrittji"
+        applicationId = "dev.sudominus.schrittji"
         minSdk = 28
         targetSdk = 36
         versionCode = 1
